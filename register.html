@@ -23,7 +23,15 @@
   <style>
     /* 페이지 전용 스타일 */
     body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle at 80% 10%,rgba(0,230,118,0.06) 0%,transparent 50%);pointer-events:none}
-    .container{max-width:480px;margin:0 auto;padding:0 16px 100px;position:relative}
+    .container{max-width:480px;margin:0 auto;padding:0 16px 130px;position:relative}
+
+    /* v2: 하단 고정 참가 신청 바 */
+    .apply-bar{position:fixed;left:0;right:0;bottom:0;z-index:90;background:rgba(14,18,16,0.97);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;}
+    .apply-bar-inner{width:100%;max-width:448px;display:flex;gap:8px;}
+    .apply-cta{flex:1;height:52px;background:var(--green);color:#08130C;border:none;border-radius:14px;font-size:15px;font-weight:900;cursor:pointer;-webkit-appearance:none;transition:transform .1s;}
+    .apply-cta:active{transform:scale(0.98);}
+    .apply-side{width:52px;height:52px;flex-shrink:0;background:var(--bg3);color:var(--muted2);border:1px solid var(--border);border-radius:14px;cursor:pointer;-webkit-appearance:none;display:flex;align-items:center;justify-content:center;}
+    .apply-side:active{color:var(--green);transform:scale(0.95);}
     
     .header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px}
     .top-logo-img { height: 35px; width: auto; object-fit: contain; }
@@ -248,7 +256,7 @@
     <div id="rosterBoard" style="margin-bottom: 30px;">
       <div class="section-label">참여 현황 <span id="totalCount" style="float:right; color:var(--green)">0명</span></div>
       <div style="text-align:center; margin: 16px 0;">
-        <button onclick="showAllTeamsChart()" style="background:var(--bg3); border:1px solid var(--green); color:var(--green); padding:12px; border-radius:12px; font-weight:bold; cursor:pointer; width: 100%; -webkit-appearance:none; transition:0.2s;">전체 팀 전력 비교</button>
+        <button onclick="showAllTeamsChart()" style="background:var(--bg3); border:1px solid var(--border); color:var(--muted2); padding:12px; border-radius:12px; font-weight:700; cursor:pointer; width: 100%; -webkit-appearance:none; transition:0.2s;">전체 팀 전력 비교</button>
       </div>
       <div id="rosterContent" style="color:var(--muted);font-size:13px;padding:20px"><div style="text-align:center">로스터를 불러오는 중...</div></div>
     </div>
@@ -262,15 +270,13 @@
   </div>
 </div>
 
-<div class="fab-wrapper" id="fabWrapper">
-  <button class="fab-toggle-btn" onclick="toggleFab(event)">
-    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-  </button>
-  <div class="fab-expand-menu">
-    <button class="fab-btn-primary" onclick="openAppModal()">참가 신청</button>
-    <button class="fab-btn-secondary" onclick="goToProfileReg()">선수 등록</button>
-    <button class="fab-btn-secondary" onclick="openAdminPwModal()">매니저 전용</button>
-    <button class="fab-btn-secondary" onclick="location.href='index.html'">홈으로</button>
+<!-- v2: 참가 신청 CTA — FAB 메뉴에 숨기지 않고 하단에 항상 고정 노출 -->
+<div class="apply-bar" id="applyBar">
+  <div class="apply-bar-inner">
+    <button class="apply-cta" onclick="openAppModal()">참가 신청하기</button>
+    <button class="apply-side" onclick="openAdminPwModal()" aria-label="매니저 전용">
+      <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
   </div>
 </div>
 
@@ -285,8 +291,8 @@
     </div>
     
     <div class="form-tabs">
-      <div class="form-tab-btn active" id="tabBtnMember" onclick="switchTab('member')">🟢 정회원 신청</div>
-      <div class="form-tab-btn" id="tabBtnGuest" onclick="switchTab('guest')">🔵 게스트 신청</div>
+      <div class="form-tab-btn active" id="tabBtnMember" onclick="switchTab('member')">정회원 신청</div>
+      <div class="form-tab-btn" id="tabBtnGuest" onclick="switchTab('guest')">게스트 신청</div>
     </div>
 
     <div id="memberForm">
@@ -312,6 +318,7 @@
           <label for="rememberMe" style="font-size:12px; color:var(--muted2); cursor:pointer; user-select:none;">이 기기에서 로그인 유지 (30일)</label>
         </div>
       </div>
+      <div style="text-align:center; font-size:12px; color:var(--muted); margin:2px 0 6px;">처음이신가요? <a onclick="goToProfileReg()" style="color:var(--green); font-weight:700; cursor:pointer;">선수 등록하기</a></div>
     </div>
 
     <div id="guestForm" style="display:none;">

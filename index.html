@@ -72,6 +72,8 @@
     .mc-main .status-badge{align-self:flex-start;}
     .mc-right{display:flex;align-items:center;gap:6px;}
     .mc-eta{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
+    .mc-cta{position:relative;z-index:1;width:100%;margin-top:13px;height:44px;border:none;border-radius:12px;background:var(--green);color:#08130C;font-size:13.5px;font-weight:900;cursor:pointer;-webkit-appearance:none;transition:transform .1s;}
+    .mc-cta:active{transform:scale(0.98);}
     
     /* ★ 통합된 일체형 배지 및 오버플로 해결 디자인 */
     .status-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:900;flex-shrink:0; white-space: normal; /* 모달 밖으로 삐져나가는 버그 해결: 줄바꿈 허용 */}
@@ -773,7 +775,11 @@
             '<div class="capacity-wrap"><div class="capacity-bar-track"><div class="capacity-bar-fill ' + fillCls + '" style="width:' + fillPct + '%"></div></div><span class="capacity-count">' + currentPlayers + '<span class="capacity-text">/' + capacity + '명</span></span></div>' +
             '<div class="mc-right"><span class="mc-eta">' + chip.text + '</span>' +
             '<div class="btn-delete-match" onclick="promptDeleteMatch(event,\'' + escapeHtml(m.gameId) + '\')"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg></div>' +
-          '</div></div></div>';
+          '</div></div>' +
+          ((status === 'open' || status === 'soon')
+            ? '<button class="mc-cta" onclick="event.stopPropagation();goToMatch(\'' + escapeHtml(m.gameId) + '\')">참가 신청하기</button>'
+            : '') +
+          '</div>';
     });
     document.getElementById('matchList').innerHTML = html;
   }
