@@ -595,7 +595,7 @@
           }
         } else { document.getElementById('p_text').value = ''; document.getElementById('p_expire').value = ''; }
       }
-    });
+    }, (err) => { console.error('[settings onSnapshot]', err); });
   }
   function dismissPopup(){ if(window._popupKey) localStorage.setItem(window._popupKey, 'dismissed'); document.getElementById('popupOverlay').style.display='none'; }
 

@@ -645,7 +645,7 @@
           }
         }
       }
-    });
+    }, (err) => { console.error('[settings onSnapshot]', err); });
   }
   function dismissPopup(){ if(window._popupKey) localStorage.setItem(window._popupKey, 'dismissed'); document.getElementById('popupOverlay').style.display='none'; }
 
@@ -672,9 +672,9 @@
       // 팀별 유니폼 배정 실시간 반영
       globalTeamJerseys = globalMatchData.teamJerseys || {};
       processRoster();
-    });
-    db.collection("users").onSnapshot((snapshot) => { snapshot.forEach(doc => { globalUsersMap[doc.data().name] = { id: doc.id, ...doc.data() }; }); processRoster(); });
-    db.collection("matches").doc(GAME_ID).collection("entries").orderBy("addedAt", "asc").onSnapshot((snapshot) => { globalEntries = []; snapshot.forEach((doc) => { const entry = doc.data(); if (isActiveEntry(entry)) globalEntries.push(entry); }); document.getElementById('totalCount').innerText = globalEntries.length + '명'; processRoster(); });
+    }, (err) => { console.error('[match onSnapshot]', err); showToast('매치 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.', 'error'); });
+    db.collection("users").onSnapshot((snapshot) => { snapshot.forEach(doc => { globalUsersMap[doc.id] = { id: doc.id, ...doc.data() }; }); processRoster(); }, (err) => { console.error('[users onSnapshot]', err); showToast('회원 정보를 불러오지 못했습니다.', 'error'); });
+    db.collection("matches").doc(GAME_ID).collection("entries").orderBy("addedAt", "asc").onSnapshot((snapshot) => { globalEntries = []; snapshot.forEach((doc) => { const entry = doc.data(); if (isActiveEntry(entry)) globalEntries.push(entry); }); document.getElementById('totalCount').innerText = globalEntries.length + '명'; processRoster(); }, (err) => { console.error('[entries onSnapshot]', err); showToast('참가 명단을 불러오지 못했습니다.', 'error'); });
   }
   
   /* 👕 유니폼 마스터 목록 실시간 구독 */
@@ -686,7 +686,7 @@
         globalJerseyList = [];
       }
       renderRosterUI(); // 유니폼 변경 시 UI 재렌더
-    });
+    }, (err) => { console.error('[jerseys onSnapshot]', err); });
   }
 
   /* ★ 메인 화면과 동일한 매치 상태 계산 함수 모음 */
@@ -749,7 +749,7 @@
     for(let i=0; i<totalTeams; i++) globalRoster.teams.push({ name: DEFAULT_TEAM_NAMES[i], players: [] }); globalRoster.waiting = [];
     globalEntries.forEach(e => {
       let p; if (e.userId && e.userId.startsWith('GUEST-')) { p = e; } 
-      else { let latest = globalUsersMap[e.name] || {}; p = { ...e, photoUrl: latest.photoUrl || e.photoUrl || '', ovr: latest.ovr || e.ovr || 50, pos: latest.pos || e.pos || 'MF', stats: latest.stats || e.stats || [50,50,50,50,50,50,50,50] }; }
+      else { let latest = globalUsersMap[e.userId] || {}; p = { ...e, photoUrl: latest.photoUrl || e.photoUrl || '', ovr: latest.ovr || e.ovr || 50, pos: latest.pos || e.pos || 'MF', stats: latest.stats || e.stats || [50,50,50,50,50,50,50,50] }; }
       if (p.teamLabel === '미정') globalRoster.waiting.push(p);
       else { const teamIdx = DEFAULT_TEAM_NAMES.indexOf(p.teamLabel); if (teamIdx !== -1 && teamIdx < globalRoster.teams.length) globalRoster.teams[teamIdx].players.push(p); else globalRoster.waiting.push(p); }
     });
@@ -1167,7 +1167,7 @@
     } else if (p.userId && p.userId.startsWith('GUEST-')) {
         if(p.guestPw === pw) isAuth = true;
     } else {
-        const userDbInfo = globalUsersMap[p.name];
+        const userDbInfo = globalUsersMap[p.userId];
         if(userDbInfo && await verifyUserPw(pw, userDbInfo, p.userId)) {
           isAuth = true;
           await migrateUserPwIfLegacy(db.collection("users").doc(p.userId), pw, userDbInfo);

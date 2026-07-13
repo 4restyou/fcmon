@@ -2307,7 +2307,7 @@
           }
           renderJerseyListInModal();
           renderAll(); // 팀 카드의 드롭다운 갱신
-        });
+        }, (err) => { console.error('[jerseys onSnapshot]', err); });
       }
       
       // 유니폼 관리 모달 열기

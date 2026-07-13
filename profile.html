@@ -530,7 +530,7 @@
           }
         }
       }
-    });
+    }, (err) => { console.error('[settings onSnapshot]', err); });
   }
   function dismissPopup(){ if(window._popupKey) localStorage.setItem(window._popupKey, 'dismissed'); document.getElementById('popupOverlay').style.display='none'; }
 
