@@ -181,8 +181,9 @@
     /* ─── FAB 좌측 하단 고정 + 세로 메뉴 ─── */
     /* 컨테이너(max-width:480px)의 좌측에 맞춰 정렬 */
     .fab-wrapper {
-      position: fixed; 
-      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      position: fixed;
+      /* 하단 탭바(약 74px) 위에 떠 있도록 */
+      bottom: calc(92px + env(safe-area-inset-bottom, 0px));
       /* 기본(모바일 & 좁은 화면): 화면 좌측 기준 */
       left: 16px;
       z-index: 100;
@@ -284,20 +285,28 @@
     }
   </style>
 </head>
-<body>
+<body class="has-tabbar">
 <div class="container">
   <div class="header">
     <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img">
-    <button class="btn-install-icon" onclick="openInstallGuide()" aria-label="제작자 정보">
-      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="16" x2="12" y2="12"></line>
-        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-      </svg>
-    </button>
+    <div style="display:flex;align-items:center;gap:2px;">
+      <button class="btn-install-icon" onclick="openInstallGuide()" aria-label="제작자 정보">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+      </button>
+      <button class="btn-install-icon" onclick="openAdminSheet()" aria-label="관리자 메뉴">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
   </div>
   
-  <div class="notice-container" onclick="openNoticeModal()" title="공지 관리">
+  <div class="notice-container">
     <div class="notice-track" id="noticeTrack">
       <div class="notice-text" id="displayNotice">공지를 불러오는 중입니다...</div>
       <div class="notice-text" id="displayNotice2">공지를 불러오는 중입니다...</div>
@@ -332,8 +341,31 @@
     <hr style="border:none; border-top:1px solid var(--border); margin:18px 0;">
     <div class="form-group"><label class="form-label">마스터 비밀번호</label><input type="password" id="n_pw" class="form-input" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') { saveNotice(); }"></div>
     <button class="btn-modal-submit" id="noticeBtn" onclick="saveNotice()">공지 적용하기</button>
-    <hr style="border:none; border-top:1px solid var(--border); margin:18px 0 14px;">
-    <button onclick="openRestoreModal()" style="width:100%;padding:12px;background:var(--bg3);color:var(--muted2);border:1px solid var(--border);border-radius:12px;font-weight:700;font-size:13px;cursor:pointer;-webkit-appearance:none;">🗂 삭제된 매치 복원</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="adminSheet">
+  <div class="modal-content">
+    <div class="modal-pill"></div>
+    <div class="modal-header">
+      <div class="modal-title">관리자 메뉴</div>
+      <button class="modal-close" onclick="closeAdminSheet()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">마스터 비밀번호가 필요한 기능입니다.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="closeAdminSheet();openNoticeModal();" style="display:flex;align-items:center;gap:12px;width:100%;padding:15px 16px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;-webkit-appearance:none;text-align:left;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        <span style="flex:1;">공지 관리<br><span style="font-size:11px;font-weight:400;color:var(--muted);">전광판 문구 · 팝업 공지</span></span>
+        <span style="color:var(--muted);">›</span>
+      </button>
+      <button onclick="closeAdminSheet();openRestoreModal();" style="display:flex;align-items:center;gap:12px;width:100%;padding:15px 16px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;-webkit-appearance:none;text-align:left;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        <span style="flex:1;">삭제된 매치 복원<br><span style="font-size:11px;font-weight:400;color:var(--muted);">숨겨진 매치 복원 · 영구 삭제</span></span>
+        <span style="color:var(--muted);">›</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -430,16 +462,9 @@
 </div>
 
 <div class="fab-wrapper" id="fabWrapper">
-  <button class="fab-toggle-btn" onclick="toggleFab(event)">
+  <button class="fab-toggle-btn" onclick="openCreateModal()" aria-label="새 매치 만들기">
     <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
   </button>
-  <div class="fab-expand-menu">
-    <button class="fab-btn-primary" onclick="openCreateModal()">새 매치 만들기</button>
-    <button class="fab-btn-secondary" onclick="location.href='profile.html'">프로필</button>
-    <button class="fab-btn-secondary" onclick="location.href='members.html'">회원 명부</button>
-    <button class="fab-btn-secondary" onclick="location.href='attendance.html'">출석률</button>
-    <button class="fab-btn-secondary" onclick="location.href='ranking.html'">랭킹</button>
-  </div>
 </div>
 
 <script>
@@ -887,6 +912,8 @@
     document.getElementById('restoreModal').classList.add('show');
   }
   function closeRestoreModal() { document.getElementById('restoreModal').classList.remove('show'); }
+  function openAdminSheet() { document.getElementById('adminSheet').classList.add('show'); }
+  function closeAdminSheet() { document.getElementById('adminSheet').classList.remove('show'); }
 
   function renderRestoreList() {
     const deleted = globalAllMatches
@@ -1512,5 +1539,12 @@ _dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
 })();
 </script>
 
+<nav class="fcm-tabbar" aria-label="주요 메뉴">
+  <a class="fcm-tab on" href="index.html" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>홈</a>
+  <a class="fcm-tab" href="ranking.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>랭킹</a>
+  <a class="fcm-tab" href="members.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>멤버</a>
+  <a class="fcm-tab" href="attendance.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>출석</a>
+  <a class="fcm-tab" href="profile.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>프로필</a>
+</nav>
 </body>
 </html>
