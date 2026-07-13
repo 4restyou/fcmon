@@ -2510,7 +2510,7 @@
 
       function openEndMatchModal() {
         const all = flattenTeams(); if(!all.length) { showToast("배정된 인원이 없습니다.", 'warning'); return; }
-        let opt = '<option value="">선택 안 함</option>'; all.forEach(p => { opt += `<option value="${p.userId}" data-name="${p.name}">${p.name}</option>`; });
+        let opt = '<option value="">선택 안 함</option>'; all.forEach(p => { opt += `<option value="${escapeHtml(p.userId)}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`; });
         document.getElementById('awardMom').innerHTML = opt; document.getElementById('awardSecond').innerHTML = opt; document.getElementById('awardThird').innerHTML = opt;
         let tOpt = '<option value="">우승팀 없음 (무승부 등)</option>'; teamsData.forEach((t, i) => { if(t.length) tOpt += `<option value="${i}">${TEAM_NAMES[i]}</option>`; }); document.getElementById('awardWinTeam').innerHTML = tOpt;
         if(saveTimeout) { clearTimeout(saveTimeout); saveTimeout=null; executeSave(() => openSheet('endMatchModal')); } else openSheet('endMatchModal');
