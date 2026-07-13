@@ -448,6 +448,24 @@
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   const GAME_ID = urlParams.get('gameId');
+
+  /* v2: 메인의 '참가 신청하기' 버튼으로 진입하면 신청서를 바로 연다.
+     단, 이미 신청한 회원(자동 로그인 세션 기준)이거나 종료된 매치면 열지 않는다. */
+  let _autoApplyPending = urlParams.get('apply') === '1';
+  let _entriesLoaded = false;
+  function maybeAutoOpenApply() {
+    if (!_autoApplyPending || !globalMatchData || !_entriesLoaded) return;
+    _autoApplyPending = false;
+    if (globalMatchData.status === '매치종료') return;
+    try {
+      const session = loadAutoLoginSession();
+      if (session && globalEntries.some(e => e.userId === session.userId)) {
+        showToast('이미 참가 신청된 매치입니다.');
+        return;
+      }
+    } catch (e) { /* 세션 확인 실패 시에도 신청서는 연다 */ }
+    setTimeout(() => openAppModal(), 200);
+  }
   const URL_MODE = urlParams.get('mode'); 
 
   const firebaseConfig = { apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU", authDomain: "fcmon-96ec1.firebaseapp.com", projectId: "fcmon-96ec1", storageBucket: "fcmon-96ec1.firebasestorage.app", messagingSenderId: "912620232254", appId: "1:912620232254:web:b86a27fa9f733f2c137b6f" };
@@ -681,9 +699,10 @@
       // 팀별 유니폼 배정 실시간 반영
       globalTeamJerseys = globalMatchData.teamJerseys || {};
       processRoster();
+      maybeAutoOpenApply();
     }, (err) => { console.error('[match onSnapshot]', err); showToast('매치 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.', 'error'); });
     db.collection("users").onSnapshot((snapshot) => { snapshot.forEach(doc => { globalUsersMap[doc.id] = { id: doc.id, ...doc.data() }; }); processRoster(); }, (err) => { console.error('[users onSnapshot]', err); showToast('회원 정보를 불러오지 못했습니다.', 'error'); });
-    db.collection("matches").doc(GAME_ID).collection("entries").orderBy("addedAt", "asc").onSnapshot((snapshot) => { globalEntries = []; snapshot.forEach((doc) => { const entry = doc.data(); if (isActiveEntry(entry)) globalEntries.push(entry); }); document.getElementById('totalCount').innerText = globalEntries.length + '명'; processRoster(); }, (err) => { console.error('[entries onSnapshot]', err); showToast('참가 명단을 불러오지 못했습니다.', 'error'); });
+    db.collection("matches").doc(GAME_ID).collection("entries").orderBy("addedAt", "asc").onSnapshot((snapshot) => { globalEntries = []; snapshot.forEach((doc) => { const entry = doc.data(); if (isActiveEntry(entry)) globalEntries.push(entry); }); document.getElementById('totalCount').innerText = globalEntries.length + '명'; processRoster(); _entriesLoaded = true; maybeAutoOpenApply(); }, (err) => { console.error('[entries onSnapshot]', err); showToast('참가 명단을 불러오지 못했습니다.', 'error'); });
   }
   
   /* 👕 유니폼 마스터 목록 실시간 구독 */

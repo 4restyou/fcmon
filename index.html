@@ -777,7 +777,7 @@
             '<div class="btn-delete-match" onclick="promptDeleteMatch(event,\'' + escapeHtml(m.gameId) + '\')"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg></div>' +
           '</div></div>' +
           ((status === 'open' || status === 'soon')
-            ? '<button class="mc-cta" onclick="event.stopPropagation();goToMatch(\'' + escapeHtml(m.gameId) + '\')">참가 신청하기</button>'
+            ? '<button class="mc-cta" onclick="event.stopPropagation();goToApply(\'' + escapeHtml(m.gameId) + '\')">참가 신청하기</button>'
             : '') +
           '</div>';
     });
@@ -1042,6 +1042,8 @@
   function openCreateModal() { document.getElementById('createModal').classList.add('show'); }
   function closeCreateModal() { document.getElementById('createModal').classList.remove('show'); document.getElementById('c_pw').value=''; }
   function goToMatch(gid){ window.location.href = 'register.html?gameId=' + gid; }
+  // 참가 신청 버튼 전용: 진입 즉시 신청서가 열리도록 apply 플래그를 붙인다
+  function goToApply(gid){ window.location.href = 'register.html?gameId=' + gid + '&apply=1'; }
   function openInstallGuide() { document.getElementById('installGuideModal').classList.add('show'); }
   function closeInstallGuide() { document.getElementById('installGuideModal').classList.remove('show'); }
   
