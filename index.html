@@ -623,7 +623,6 @@
     var next = new Date(now); next.setDate(now.getDate() + daysUntil); next.setHours(21, 0, 0, 0);
     var tzOffset = next.getTimezoneOffset() * 60000;
     document.getElementById('c_date').value = new Date(next - tzOffset).toISOString().slice(0, 16);
-    document.getElementById('c_loc').value = '상무풋살';
   }
 
   function loadSettingsRealtime() {
