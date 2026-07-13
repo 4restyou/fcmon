@@ -346,7 +346,7 @@
         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
-    <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px;">삭제된 매치는 목록에서 숨겨질 뿐 데이터(참가자 명단 포함)는 보존됩니다. 복원하면 참가자 명단까지 그대로 목록에 다시 나타납니다.</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px;">삭제된 매치는 목록에서 숨겨질 뿐 데이터(참가자 명단 포함)는 보존됩니다. <b>복원</b>하면 그대로 목록에 다시 나타나고, <b style="color:var(--red);">영구삭제</b>하면 참가자 명단까지 완전히 제거되어 되돌릴 수 없습니다.</div>
     <div id="restoreList"></div>
   </div>
 </div>
@@ -909,7 +909,10 @@
           '<div style="font-size:11px;color:var(--muted2);margin-top:3px;">경기: ' + matchDate + ' · 참가 ' + cnt + '</div>' +
           '<div style="font-size:11px;color:var(--muted);margin-top:2px;">삭제: ' + delDate + ' (' + who + ')</div>' +
         '</div>' +
-        '<button onclick="restoreDeletedMatch(\'' + escapeHtml(m.gameId) + '\')" style="flex-shrink:0;padding:10px 16px;background:var(--green);color:#000;border:none;border-radius:10px;font-weight:900;font-size:12px;cursor:pointer;-webkit-appearance:none;">복원</button>' +
+        '<div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;">' +
+          '<button onclick="restoreDeletedMatch(\'' + escapeHtml(m.gameId) + '\')" style="padding:9px 16px;background:var(--green);color:#000;border:none;border-radius:10px;font-weight:900;font-size:12px;cursor:pointer;-webkit-appearance:none;">복원</button>' +
+          '<button onclick="permanentDeleteMatch(\'' + escapeHtml(m.gameId) + '\')" style="padding:9px 16px;background:transparent;color:var(--red);border:1px solid rgba(255,71,87,0.4);border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;-webkit-appearance:none;">영구삭제</button>' +
+        '</div>' +
       '</div>';
     });
     box.innerHTML = html;
@@ -933,6 +936,53 @@
       // 목록 갱신은 onSnapshot이 자동 처리
     } catch (err) {
       showToast('복원 실패: ' + err.message, 'error');
+    }
+  }
+
+  async function permanentDeleteMatch(gameId) {
+    const m = globalAllMatches.find(x => x.gameId === gameId && x.deletedAt);
+    if (!m) { showToast('대상 매치를 찾을 수 없습니다.', 'error'); return; }
+    const dateStr = m.dateTime ? new Date(m.dateTime).toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
+    const ok1 = await showConfirm(
+      '"' + (m.location || '') + '" (' + dateStr + ') 매치를 영구 삭제하시겠습니까?\n\n참가자 명단까지 완전히 제거되며 되돌릴 수 없습니다.',
+      { title: '⚠️ 영구 삭제', danger: true, confirmText: '계속' }
+    );
+    if (!ok1) return;
+    const ok2 = await showConfirm(
+      '정말로 영구 삭제합니다.\n이 작업은 복구가 불가능합니다.',
+      { title: '⚠️ 최종 확인', danger: true, confirmText: '영구 삭제' }
+    );
+    if (!ok2) return;
+    try {
+      // 삭제 로그 먼저 기록 (영구 삭제 추적용, 30일 보관)
+      try {
+        const thirtyDaysLater = new Date();
+        thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+        await db.collection("deletionLogs").add({
+          gameId: gameId,
+          matchLocation: m.location || '',
+          matchDate: m.dateTime || '',
+          participantCount: (typeof m.deletedEntryCount === 'number') ? m.deletedEntryCount : 0,
+          deletedAt: new Date().toISOString(),
+          authType: 'master-permanent',
+          userAgent: navigator.userAgent.substring(0, 200),
+          expireAt: firebase.firestore.Timestamp.fromDate(thirtyDaysLater)
+        });
+      } catch (logErr) { console.warn('영구삭제 로그 기록 실패:', logErr); }
+
+      // 참가자 명단(entries) 하위 문서부터 제거 후 매치 문서 삭제
+      const entriesSnap = await db.collection("matches").doc(gameId).collection("entries").get();
+      const docs = entriesSnap.docs;
+      for (let i = 0; i < docs.length; i += 400) {
+        const batch = db.batch();
+        docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+      await db.collection("matches").doc(gameId).delete();
+      showToast('매치가 영구 삭제되었습니다.', 'success');
+      // 목록 갱신은 onSnapshot이 자동 처리
+    } catch (err) {
+      showToast('영구 삭제 실패: ' + err.message, 'error');
     }
   }
 
