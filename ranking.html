@@ -30,9 +30,10 @@
     
     .back-btn{width:40px;height:40px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--text)}
 
-    .tabs { display: flex; gap: 10px; margin-bottom: 24px; background: var(--bg2); padding: 6px; border-radius: 16px; border: 1px solid var(--border); }
-    .tab-btn { flex: 1; padding: 14px 0; border-radius: 12px; font-size: 15px; font-weight: 900; background: transparent; color: var(--muted); border: none; cursor: pointer; transition: 0.2s; }
-    .tab-btn.active { background: var(--green); color: #000; box-shadow: 0 4px 10px rgba(0,230,118,0.2); }
+    /* v2: 탭 — 형광 채움 대신 절제된 활성 표시 */
+    .tabs { display: flex; gap: 6px; margin-bottom: 24px; background: var(--bg2); padding: 5px; border-radius: 14px; border: 1px solid var(--border); }
+    .tab-btn { flex: 1; padding: 12px 0; border-radius: 10px; font-size: 13.5px; font-weight: 800; background: transparent; color: var(--muted); border: 1px solid transparent; cursor: pointer; transition: 0.2s; }
+    .tab-btn.active { background: var(--green-dim); color: var(--green); border-color: rgba(44,224,128,0.3); }
 
     .period-filter { display: flex; gap: 8px; align-items: center; margin: -10px 0 18px; }
     .period-select { flex: 1; min-width: 0; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 11px 12px; border-radius: 11px; font-size: 13px; font-weight: 800; outline: none; -webkit-appearance: none; appearance: none; }
@@ -44,20 +45,24 @@
     .list-section.show { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .rank-card { background: var(--bg3); border-radius: 16px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; border: 1px solid var(--border); }
-    .rank-num { width: 32px; font-size: 18px; font-weight: 900; color: var(--muted); text-align: center; margin-right: 12px; }
-    .rank-num.gold { color: var(--gold); font-size: 24px; }
-    .rank-num.silver { color: var(--silver); font-size: 22px; }
-    .rank-num.bronze { color: var(--bronze); font-size: 20px; }
-    .rank-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--bg); overflow: hidden; margin-right: 16px; display: flex; align-items: center; justify-content: center; font-size: 20px;}
+    /* v2: 랭킹 행 — 촘촘하고 정돈된 리스트 */
+    .rank-card { background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); }
+    .rank-num { width: 26px; font-size: 16px; font-weight: 900; color: var(--muted); text-align: center; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .rank-num.gold { color: #F5C542; font-size: 18px; }
+    .rank-num.silver { color: #C9CFD4; font-size: 17px; }
+    .rank-num.bronze { color: #D08A4F; font-size: 17px; }
+    .rank-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--bg); overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 1px solid var(--border); }
     .rank-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .rank-info { flex: 1; }
-    .rank-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-    .rank-pos { font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; color: white; margin-right: 4px; }
-    .pos-FW { background-color: #FF4757; } .pos-MF { background-color: #2ED573; } .pos-DF { background-color: #1E90FF; } .pos-GK { background-color: #FFA502; }
-    .rank-ovr { font-size: 11px; color: var(--muted); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; display: inline-block; }
-    .rank-score { font-size: 20px; font-weight: 900; color: var(--green); }
-    .rank-meta { font-size: 10px; color: var(--muted2); margin-top: 4px; line-height: 1.45; }
+    .rank-info { flex: 1; min-width: 0; }
+    .rank-name { font-size: 14.5px; font-weight: 800; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rank-pos { font-size: 9.5px; font-weight: 800; padding: 2.5px 7px; border-radius: 6px; display: inline-block; margin-right: 4px; }
+    .pos-FW { color: #FF7A84; background: rgba(255,90,102,0.14); }
+    .pos-MF { color: #4FE08D; background: rgba(44,224,128,0.12); }
+    .pos-DF { color: #5FB8FF; background: rgba(64,150,255,0.14); }
+    .pos-GK { color: #FFB74D; background: rgba(255,167,38,0.14); }
+    .rank-ovr { font-size: 10.5px; color: var(--muted2); background: rgba(255,255,255,0.05); padding: 2.5px 7px; border-radius: 6px; display: inline-block; font-variant-numeric: tabular-nums; }
+    .rank-score { font-size: 18px; font-weight: 900; color: var(--green); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .rank-meta { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.45; font-variant-numeric: tabular-nums; }
 
     .history-list { display: flex; flex-direction: column; gap: 8px; }
     .history-item { background: var(--bg3); border-radius: 10px; padding: 12px 16px; border: 1px solid var(--border); border-left: 3px solid var(--green); display: flex; flex-direction: column; gap: 4px; }
@@ -200,9 +205,9 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" id="btnRanking" onclick="switchTab('ranking')">🏆 선수 랭킹</button>
-    <button class="tab-btn" id="btnHistory" onclick="switchTab('history')">📋 매치 기록</button>
-    <button class="tab-btn" id="btnReport" onclick="switchTab('report')">📊 월간 리포트</button>
+    <button class="tab-btn active" id="btnRanking" onclick="switchTab('ranking')">선수 랭킹</button>
+    <button class="tab-btn" id="btnHistory" onclick="switchTab('history')">매치 기록</button>
+    <button class="tab-btn" id="btnReport" onclick="switchTab('report')">월간 리포트</button>
   </div>
 
   <div id="periodFilter" class="period-filter">
