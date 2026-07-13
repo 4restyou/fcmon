@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FCMON - 참가신청</title>
+  
+  <link rel="icon" type="image/png" href="./icon-512.png?v=3">
+  <link rel="shortcut icon" href="./icon-512.png?v=3">
+  <link rel="apple-touch-icon" href="./icon-512.png?v=3">
+  <meta name="apple-mobile-web-app-title" content="FCMON">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./common.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <style>
+    /* 페이지 전용 스타일 */
+    body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle at 80% 10%,rgba(0,230,118,0.06) 0%,transparent 50%);pointer-events:none}
+    .container{max-width:480px;margin:0 auto;padding:0 16px 100px;position:relative}
+    
+    .header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px}
+    .top-logo-img { height: 35px; width: auto; object-fit: contain; }
+    .back-btn{background:transparent;border:none;color:var(--text);cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;outline:none;-webkit-appearance:none;}
+    
+    /* ★ 메인 화면과 완벽히 통일된 매치 카드 디자인 */
+    .match-info-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:24px; position:relative; overflow:hidden;}
+    .match-info-card::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--green);transition:background .3s}
+    .match-info-card.status-soon::before{background:var(--amber)}
+    .match-info-card.status-live::before{background:var(--blue)}
+    .match-info-card.status-done::before{background:var(--muted)}
+    .match-info-card::after { content: ''; position: absolute; top: -20px; right: -20px; width: 130px; height: 130px; background-image: url('./sublogo2.png'); background-size: contain; background-repeat: no-repeat; background-position: center; opacity: 0.08; pointer-events: none; z-index: 0; }
+    
+    .card-top, .match-date, .card-bottom{position:relative; z-index:1;}
+    .card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+    .match-loc{font-size:17px;font-weight:900;color:var(--text);line-height:1.2;padding-right:8px}
+    
+    .status-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:900;flex-shrink:0; white-space: normal;}
+    .status-badge .dot{width:6px;height:6px;border-radius:50%;animation:pulse 1.8s ease-in-out infinite; flex-shrink: 0;}
+    .status-time{font-weight:500;opacity:0.75;padding-left:6px;border-left:1px solid currentColor; display: inline-block; white-space: normal;}
+    
+    .badge-open{background:var(--status-open-bg);color:var(--status-open-color);border:1px solid rgba(0,230,118,0.2)}
+    .badge-open .dot{background:var(--status-open-color)}
+    .badge-soon{background:var(--status-soon-bg);color:var(--status-soon-color);border:1px solid rgba(255,202,40,0.2)}
+    .badge-soon .dot{background:var(--status-soon-color)}
+    .badge-live{background:var(--status-live-bg);color:var(--status-live-color);border:1px solid rgba(64,196,255,0.25)}
+    .badge-live .dot{background:var(--status-live-color)}
+    .badge-done{background:var(--status-done-bg);color:var(--status-done-color);border:1px solid rgba(255,255,255,0.06)}
+    .badge-done .dot{background:var(--status-done-color);animation:none}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+    
+    .match-date{font-size:12px;color:var(--muted2);margin-bottom:14px;display:flex;align-items:center;gap:5px}
+    .card-bottom{display:flex;align-items:center;justify-content:space-between}
+    .capacity-wrap{display:flex;align-items:center;gap:10px}
+    .capacity-bar-track{width:80px;height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden}
+    .capacity-bar-fill{height:100%;border-radius:3px;background:var(--green);transition:width .6s ease}
+    .capacity-bar-fill.soon{background:var(--amber)}
+    .capacity-bar-fill.full{background:var(--red)}
+    .capacity-text{font-size:12px;color:var(--muted2);font-weight:500}
+    .capacity-count{font-size:13px;font-weight:700;color:var(--text)}
+    
+    .section-label{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px;}
+    
+    /* 팀 헤더 + 유니폼 칩 */
+    .team-header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; border-bottom: 1px solid rgba(0,230,118,0.2); padding-bottom: 8px; }
+    .team-header-title { font-size: 13px; color: var(--green); font-weight: 900; flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 8px; text-align: left; }
+    .team-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; box-shadow: 0 0 0 2px rgba(255,255,255,0.08); }
+    .jersey-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+    .jersey-dot { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex-shrink: 0; display: inline-block; }
+    
+    .players-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .player-card { background: linear-gradient(145deg, #1e2420, #111612); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 10px 6px 8px; position: relative; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: transform 0.2s; cursor:pointer;}
+    .player-card:active { transform: scale(0.95); }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: -10px; padding: 0 4px; position: relative; z-index: 2; }
+    .card-ovr { font-size: 16px; font-weight: 900; color: var(--gold); text-shadow: 1px 1px 2px rgba(0,0,0,0.8); letter-spacing: -0.5px;}
+    .card-pos { font-size: 9px; font-weight: 900; padding: 2px 5px; border-radius: 4px; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .FW { background-color: #FF4757; } .MF { background-color: #2ED573; } .DF { background-color: #1E90FF; } .GK { background-color: #FFA502; }
+    
+    .card-avatar { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border); margin: 0 auto 6px; overflow: hidden; background: var(--bg); display:flex; align-items:center; justify-content:center; font-size:20px; position: relative; z-index: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .card-name { font-size: 12px; font-weight: 900; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.5px; }
+    .card-note-dot { position:absolute; top:6px; left:6px; width:22px; height:22px; background:var(--green); color:#000; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; box-shadow:0 2px 6px rgba(0,230,118,0.4); z-index:3; animation:notePulse 2.4s ease-in-out infinite; }
+    @keyframes notePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    .player-card-mine { border-color: rgba(0,230,118,0.6) !important; box-shadow: 0 0 0 2px rgba(0,230,118,0.15), 0 4px 12px rgba(0,230,118,0.1); }
+    .player-card-mine::before { content:'나'; position:absolute; top:-6px; right:-6px; background:var(--green); color:#000; font-size:9px; font-weight:900; padding:2px 6px; border-radius:8px; z-index:4; box-shadow:0 2px 4px rgba(0,0,0,0.3); }
+
+    .modal-close { background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; outline: none; -webkit-appearance: none; transition: 0.2s; }
+    .modal-close:active { transform: scale(0.9); color: var(--text); }
+
+    /* 모달 기본 (모바일): 바텀시트 */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 2000; display: none; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); }
+    .modal-bg.show { display: flex; }
+    .modal-content { background: var(--bg2); width: 100%; max-width: 480px; border-radius: 24px 24px 0 0; padding: 20px 20px 36px; border: 1px solid var(--border); border-bottom: none; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32, 1, 0.23, 1); max-height: 92vh; overflow-y: auto; }
+    .modal-bg.show .modal-content { transform: translateY(0); }
+    .modal-pill { width: 36px; height: 4px; background: var(--border-hover); border-radius: 2px; margin: 0 auto 20px; }
+    
+    /* 모달 반응형 (768px 이상 PC/태블릿): 중앙 팝업 */
+    @media (min-width: 768px) {
+      .modal-bg { align-items: center; padding: 20px; }
+      .modal-content { border-radius: 24px; padding: 24px 20px; border-bottom: 1px solid var(--border); transform: scale(0.95); opacity: 0; transition: transform 0.25s cubic-bezier(0.32, 1, 0.23, 1), opacity 0.25s; max-height: 88vh; }
+      .modal-bg.show .modal-content { transform: scale(1); opacity: 1; }
+      .modal-pill { display: none; }
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-title { font-size: 17px; font-weight: 900; color: var(--green); }
+    
+    .form-tabs { display:flex; background:var(--bg3); border-radius:12px; padding:4px; margin-bottom:16px; border:1px solid var(--border); }
+    .form-tab-btn { flex:1; text-align:center; padding:10px 0; font-size:13px; font-weight:700; color:var(--muted); border-radius:8px; cursor:pointer; transition:0.2s; }
+    .form-tab-btn.active { background:var(--green); color:#000; box-shadow:0 2px 8px rgba(0,230,118,0.2); }
+
+    .form-group{margin-bottom:12px}
+    .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:15px;outline:none;-webkit-appearance:none;}
+    select.form-input { appearance: none; -webkit-appearance: none; }
+    .btn-modal-submit{width:100%;height:54px;background:var(--green);color:#000;border:none;border-radius:14px;font-weight:900;font-size:15px;cursor:pointer;margin-top:8px; transition:0.2s; -webkit-appearance:none;}
+    .btn-modal-submit:active{transform:scale(0.98);}
+    .btn-modal-submit.guest-mode { background: linear-gradient(135deg, #40C4FF, #0091EA); box-shadow: 0 4px 15px rgba(64,196,255,0.3); color:#fff; }
+
+    .chart-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
+    .chart-modal-bg.show { display: flex; opacity: 1; }
+    .chart-modal-content { background: var(--bg2); width: 90%; max-width: 400px; border-radius: 20px; padding: 24px; border: 1px solid var(--border); transform: translateY(20px); transition: transform 0.3s; }
+    .chart-modal-bg.show .chart-modal-content { transform: translateY(0); }
+    .chart-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .chart-modal-title { font-size: 18px; font-weight: 900; color: var(--green); }
+    
+    .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-80px);background:#1a2a1c;border:1px solid rgba(0,230,118,0.3);border-radius:24px;padding:12px 20px;font-size:13px;color:var(--green);z-index:9999;transition:transform 0.3s;}
+    .toast.show{transform:translateX(-50%) translateY(0)}
+    #popupOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:4000;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+    .popup-box{background:var(--bg2);width:90%;max-width:400px;border-radius:22px;padding:28px 22px;border:1px solid rgba(0,230,118,0.25);text-align:center;animation:popupIn .3s ease}
+    @keyframes popupIn{from{opacity:0;transform:scale(.92) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+    /* ─── FAB 좌측 하단 고정 + 세로 메뉴 ─── */
+    .fab-wrapper {
+      position: fixed; 
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      left: 16px;
+      z-index: 100;
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      pointer-events: none;
+    }
+    @media (min-width: 512px) {
+      .fab-wrapper {
+        left: 50%;
+        margin-left: calc(-240px + 16px);
+      }
+    }
+    .fab-toggle-btn {
+      pointer-events: auto; 
+      width: 56px; height: 56px; 
+      border-radius: 50%; 
+      background: linear-gradient(135deg, #00E676, #00C853);
+      color: #000; border: none; cursor: pointer; 
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,230,118,0.4); 
+      transition: all 0.3s cubic-bezier(0.32, 1, 0.23, 1); 
+      outline: none;
+      order: 2;
+    }
+    .fab-wrapper.open .fab-toggle-btn { 
+      transform: rotate(135deg); 
+      background: #333; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+      color: #fff; 
+    }
+    .fab-expand-menu {
+      pointer-events: none; 
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      opacity: 0; 
+      transform: translateY(12px) scale(0.95); 
+      transition: all 0.28s cubic-bezier(0.32, 1, 0.23, 1);
+      order: 1;
+    }
+    .fab-wrapper.open .fab-expand-menu { 
+      opacity: 1; 
+      transform: translateY(0) scale(1); 
+      pointer-events: auto;
+    }
+    .fab-btn-primary, 
+    .fab-btn-secondary { 
+      min-width: 160px;
+      height: 46px;
+      padding: 0 22px;
+      border-radius: 23px;
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap; 
+      letter-spacing: -0.3px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      -webkit-appearance: none;
+      transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+      font-family: inherit;
+    }
+    .fab-btn-primary { 
+      background: linear-gradient(135deg, #00E676, #00C853); 
+      color: #000; 
+      font-size: 14px; 
+      font-weight: 900;
+      box-shadow: 0 4px 14px rgba(0,230,118,0.35); 
+    }
+    .fab-btn-primary:active { transform: scale(0.96); }
+    .fab-btn-secondary { 
+      background: rgba(30, 35, 32, 0.85);
+      color: #E8F5E9; 
+      border: 1px solid rgba(255,255,255,0.1); 
+      backdrop-filter: blur(12px); 
+      -webkit-backdrop-filter: blur(12px); 
+      font-size: 13px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .fab-btn-secondary:active { 
+      transform: scale(0.96); 
+      background: rgba(45, 50, 47, 0.95); 
+    }
+  </style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<div class="container" id="mainContainer">
+  <div class="header">
+    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img">
+    <button class="back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    </button>
+  </div>
+  
+  <div id="mainContent">
+    <div id="matchInfoCard" class="match-info-card">
+      <div style="color:var(--muted);font-size:13px;text-align:center">매치 정보를 불러오는 중입니다...</div>
+    </div>
+    
+    <div id="rosterBoard" style="margin-bottom: 30px;">
+      <div class="section-label">참여 현황 <span id="totalCount" style="float:right; color:var(--green)">0명</span></div>
+      <div style="text-align:center; margin: 16px 0;">
+        <button onclick="showAllTeamsChart()" style="background:var(--bg3); border:1px solid var(--green); color:var(--green); padding:12px; border-radius:12px; font-weight:bold; cursor:pointer; width: 100%; -webkit-appearance:none; transition:0.2s;">전체 팀 전력 비교</button>
+      </div>
+      <div id="rosterContent" style="color:var(--muted);font-size:13px;padding:20px"><div style="text-align:center">로스터를 불러오는 중...</div></div>
+    </div>
+  </div>
+
+  <div class="success-screen" id="successScreen" style="display:none;text-align:center;padding:60px 20px">
+    <div style="font-family:'Noto Sans KR',sans-serif;font-weight:900;font-size:32px;color:var(--green);">참가 신청 완료!</div>
+    <div style="font-size:14px;color:var(--muted);margin:20px 0">매니저가 팀을 배정할 예정입니다.</div>
+    <button class="btn-modal-submit" onclick="resetForm()" style="margin-bottom:10px;">추가 신청하기</button>
+    <button class="btn-modal-submit" onclick="goBack()" style="background:var(--bg3); color:var(--text); border:1px solid var(--border);">메인으로 가기</button>
+  </div>
+</div>
+
+<div class="fab-wrapper" id="fabWrapper">
+  <button class="fab-toggle-btn" onclick="toggleFab(event)">
+    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+  <div class="fab-expand-menu">
+    <button class="fab-btn-primary" onclick="openAppModal()">참가 신청</button>
+    <button class="fab-btn-secondary" onclick="goToProfileReg()">선수 등록</button>
+    <button class="fab-btn-secondary" onclick="openAdminPwModal()">매니저 전용</button>
+    <button class="fab-btn-secondary" onclick="location.href='index.html'">홈으로</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="applicationModal">
+  <div class="modal-content">
+    <div class="modal-pill"></div>
+    <div class="modal-header">
+      <div class="modal-title">참가 신청서</div>
+      <button class="modal-close" onclick="closeAppModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    
+    <div class="form-tabs">
+      <div class="form-tab-btn active" id="tabBtnMember" onclick="switchTab('member')">🟢 정회원 신청</div>
+      <div class="form-tab-btn" id="tabBtnGuest" onclick="switchTab('guest')">🔵 게스트 신청</div>
+    </div>
+
+    <div id="memberForm">
+      <!-- ═══════ 자동 로그인 배너 (세션 있을 때만 노출) ═══════ -->
+      <div id="autoLoginBanner" style="display:none; background: linear-gradient(135deg, rgba(0,230,118,0.12), rgba(0,230,118,0.06)); border: 1px solid rgba(0,230,118,0.35); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:11px; color:var(--green); font-weight:700; letter-spacing:0.5px; margin-bottom:2px;">✓ 자동 로그인됨</div>
+            <div style="font-size:15px; font-weight:900; color:var(--text);" id="autoLoginName">-</div>
+          </div>
+          <button type="button" onclick="switchToManualLogin()" style="background:transparent; border:1px solid var(--border); color:var(--muted2); padding:6px 12px; border-radius:8px; font-size:11px; cursor:pointer; white-space:nowrap;">
+            다른 사람
+          </button>
+        </div>
+      </div>
+
+      <!-- 수동 로그인 폼 (세션 없거나 "다른 사람" 클릭 시) -->
+      <div id="manualLoginForm">
+        <div class="form-group"><input type="text" id="playerName" class="form-input" placeholder="이름 (예: 홍길동)"></div>
+        <div class="form-group"><input type="password" id="playerPw" class="form-input" placeholder="비밀번호 숫자 4자리" onkeypress="if(event.key==='Enter') { handleApplication(); }"></div>
+        <div style="display:flex; align-items:center; gap:8px; margin:-4px 0 14px; padding:0 2px;">
+          <input type="checkbox" id="rememberMe" checked style="width:16px; height:16px; accent-color:var(--green); cursor:pointer;">
+          <label for="rememberMe" style="font-size:12px; color:var(--muted2); cursor:pointer; user-select:none;">이 기기에서 로그인 유지 (30일)</label>
+        </div>
+      </div>
+    </div>
+
+    <div id="guestForm" style="display:none;">
+      <div class="form-group"><input type="text" id="g_name" class="form-input" placeholder="게스트 이름 (실명 또는 닉네임)"></div>
+      <div class="form-group">
+        <select id="g_pos" class="form-input" style="color:var(--text)">
+          <option value="FW">주 포지션: FW (공격수)</option>
+          <option value="MF" selected>주 포지션: MF (미드필더)</option>
+          <option value="DF">주 포지션: DF (수비수)</option>
+          <option value="GK">주 포지션: GK (골키퍼)</option>
+        </select>
+      </div>
+      <div class="form-group"><input type="number" id="g_ovr" class="form-input" placeholder="본인의 예상 OVR (1~100 사이, 미입력시 50)"></div>
+      <div class="form-group"><input type="password" id="g_pw" class="form-input" placeholder="참가 취소용 비밀번호 (아무 숫자 4자리)" onkeypress="if(event.key==='Enter') { handleApplication(); }"></div>
+    </div>
+
+    <button class="btn-modal-submit" id="submitBtn" onclick="handleApplication()">신청 완료하기</button>
+  </div>
+</div>
+
+<div class="chart-modal-bg" id="adminPwModal">
+  <div class="chart-modal-content">
+    <div class="chart-modal-header">
+      <div class="chart-modal-title">매니저 전용</div>
+      <button class="modal-close" onclick="closeAdminPwModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div style="margin-bottom:16px;"><input type="password" id="adminPwInput" class="form-input" placeholder="매니저 또는 마스터 비밀번호" onkeypress="if(event.key==='Enter') { confirmAdminPw(); }"></div>
+    <button onclick="confirmAdminPw()" class="btn-modal-submit">확인</button>
+  </div>
+</div>
+
+<div class="chart-modal-bg" id="userChartModal">
+  <div class="chart-modal-content">
+    <div class="chart-modal-header">
+      <div class="chart-modal-title" id="userChartTitle">팀 능력치 비교</div>
+      <button class="modal-close" onclick="closeChartModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <canvas id="userRadarCanvas"></canvas>
+  </div>
+</div>
+
+<div class="chart-modal-bg" id="playerStatModal">
+  <div class="chart-modal-content" style="padding:20px;">
+    <div class="chart-modal-header" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="psAvatar" style="width:48px;height:48px;border-radius:50%;background:var(--bg3);border:2px solid var(--green);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;"></div>
+        <div>
+          <div id="psName" style="font-size:18px;font-weight:900;color:var(--text);"></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;"><span id="psPos" style="font-size:10px;font-weight:900;padding:2px 6px;border-radius:4px;color:#fff;"></span><span id="psOvr" style="font-size:13px;font-weight:900;color:var(--gold);"></span></div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closePlayerStatModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <canvas id="playerRadarCanvas" style="max-height:260px;"></canvas>
+    <div id="psStatBars" style="margin-top:16px;"></div>
+    
+    <div id="psMyNoteBox" style="display:none; margin-top:20px; padding:14px; background:rgba(0,230,118,0.06); border:1px solid rgba(0,230,118,0.25); border-radius:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <label for="psMyNoteInput" style="font-size:11px; color:var(--green); font-weight:900; letter-spacing:0.5px;">💬 한마디 (참가자에게 보여짐)</label>
+        <span id="psMyNoteCounter" style="font-size:10px; color:var(--muted);">0 / 20</span>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="psMyNoteInput" maxlength="20" placeholder="예: 10분 늦어요!" style="flex:1; min-width:0; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:8px; font-size:13px; outline:none;" oninput="updatePsNoteCounter()" onkeypress="if(event.key==='Enter') savePsMyNote()">
+        <button type="button" onclick="savePsMyNote()" id="psSaveNoteBtn" style="background:var(--green); color:#000; border:none; padding:0 16px; border-radius:8px; font-size:12px; font-weight:900; cursor:pointer; white-space:nowrap;">저장</button>
+      </div>
+    </div>
+    
+    <div id="psOtherNoteBox" style="display:none; margin-top:20px; padding:12px 14px; background:rgba(0,230,118,0.06); border:1px solid rgba(0,230,118,0.2); border-radius:10px;">
+      <div style="font-size:10px; color:var(--muted); font-weight:700; margin-bottom:4px;">💬 한마디</div>
+      <div id="psOtherNoteText" style="font-size:14px; color:var(--text); font-weight:600; line-height:1.5;"></div>
+    </div>
+    
+    <button class="btn-modal-submit" id="btnCancelEntry" style="background:rgba(255,71,87,0.1); color:#FF4757; border:1px solid rgba(255,71,87,0.3); margin-top:24px; height:46px; font-size:14px;" onclick="cancelFromModal()">참가 취소하기</button>
+  </div>
+</div>
+
+<div id="popupOverlay">
+  <div class="popup-box">
+    <div style="font-size:15px;font-weight:900;color:var(--green);margin-bottom:14px">공지사항</div>
+    <div id="popupContent" style="font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;text-align:left;padding:14px;background:var(--bg3);border-radius:11px;border:1px solid var(--border);max-height:260px;overflow-y:auto;margin-bottom:8px"></div>
+    <div id="popupExpire" style="font-size:11px;color:var(--muted);margin:10px 0 18px"></div>
+    <button onclick="dismissPopup()" style="width:100%;height:48px;background:var(--green);color:#000;border:none;border-radius:12px;font-weight:900;font-size:14px;cursor:pointer;-webkit-appearance:none;">확인했습니다</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+  🔐 FCMON 자동 로그인 모듈 v1.0
+  저장: localStorage ('fcmon_session'), 30일, { userId, name, expiresAt } (비번 미저장)
+  ═══════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+  const STORAGE_KEY = 'fcmon_session';
+  const SESSION_DAYS = 30;
+  
+  window.saveAutoLoginSession = function(userId, name) {
+    if (!userId || !name) return;
+    try {
+      const expiresAt = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId: userId, name: name, expiresAt: expiresAt }));
+    } catch (err) { console.warn('[AutoLogin] 세션 저장 실패:', err); }
+  };
+  
+  window.loadAutoLoginSession = function() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const session = JSON.parse(raw);
+      if (!session.expiresAt || Date.now() > session.expiresAt) { clearAutoLoginSession(); return null; }
+      if (!session.userId || !session.name) { clearAutoLoginSession(); return null; }
+      return { userId: session.userId, name: session.name };
+    } catch (err) { console.warn('[AutoLogin] 세션 복원 실패:', err); clearAutoLoginSession(); return null; }
+  };
+  
+  window.clearAutoLoginSession = function() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (err) { console.warn('[AutoLogin] 세션 삭제 실패:', err); }
+  };
+})();
+</script>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const GAME_ID = urlParams.get('gameId');
+  const URL_MODE = urlParams.get('mode'); 
+
+  const firebaseConfig = { apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU", authDomain: "fcmon-96ec1.firebaseapp.com", projectId: "fcmon-96ec1", storageBucket: "fcmon-96ec1.firebasestorage.app", messagingSenderId: "912620232254", appId: "1:912620232254:web:b86a27fa9f733f2c137b6f" };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const AUTH_FUNCTIONS_BASE_URL = "https://us-central1-fcmon-96ec1.cloudfunctions.net";
+
+  /* ═══════════════════════ 🔐 마스터 비밀번호 인증 시스템 ═══════════════════════ */
+  /* Firestore의 settings/system 문서에 저장된 masterPwHash(SHA-256)와 비교      */
+  /* 평문 마스터 비번이 HTML 소스에 노출되지 않도록 함                             */
+  let _cachedMasterHash = null; // 세션 내 캐싱 (매번 DB 호출 방지)
+
+  async function sha256(text) {
+    const buf = new TextEncoder().encode(text);
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function verifyMasterPw(pw) {
+    if (!pw) return false;
+    try {
+      if (!_cachedMasterHash) {
+        const doc = await db.collection("settings").doc("system").get();
+        if (!doc.exists || !doc.data().masterPwHash) {
+          console.warn('[Auth] masterPwHash가 설정되지 않았습니다.');
+          return false;
+        }
+        _cachedMasterHash = doc.data().masterPwHash;
+      }
+      const inputHash = await sha256(pw);
+      return inputHash === _cachedMasterHash;
+    } catch (err) {
+      console.error('[Auth] 인증 확인 중 오류:', err);
+      return false;
+    }
+  }
+
+  async function makeUserPwHash(pw) {
+    return sha256('user:' + pw);
+  }
+
+  async function callAuthFunction(name, payload) {
+    const res = await fetch(AUTH_FUNCTIONS_BASE_URL + '/' + name, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('auth-function-' + res.status);
+    return await res.json();
+  }
+
+  async function verifyUserPw(pw, userData, userId) {
+    if (!pw || !userData) return false;
+    try {
+      const result = await callAuthFunction('verifyUserPassword', { userId: userId || userData.id || '', name: userData.name || '', pw: pw });
+      if (result && result.ok) {
+        if (result.user) Object.assign(userData, result.user);
+        return true;
+      }
+    } catch (err) {
+      console.warn('[Auth] 서버 회원 인증 실패, 로컬 호환 검증으로 전환:', err);
+    }
+    if (userData.passwordHash) return await makeUserPwHash(pw) === userData.passwordHash;
+    return userData.password === pw;
+  }
+
+  async function migrateUserPwIfLegacy(userRef, pw, userData) {
+    if (!userRef || !pw || !userData || userData.passwordHash || userData.password !== pw) return;
+    try {
+      const passwordHash = await makeUserPwHash(pw);
+      await userRef.update({ password: '0000', passwordHash: passwordHash });
+      userData.password = '0000';
+      userData.passwordHash = passwordHash;
+    } catch (err) {
+      console.warn('[Auth] 회원 비밀번호 마이그레이션 실패:', err);
+    }
+  }
+
+  async function makeMatchPwHash(pw) {
+    return sha256('match:' + pw);
+  }
+
+  async function verifyMatchAdminPw(pw, matchData, gameId) {
+    if (!pw || !matchData) return false;
+    if (gameId) {
+      try {
+        const result = await callAuthFunction('verifyMatchAdminPassword', { gameId: gameId, pw: pw });
+        if (result && result.ok) {
+          delete matchData.adminPw;
+          delete matchData.adminPwHash;
+          return true;
+        }
+      } catch (err) {
+        console.warn('[Auth] 서버 매치 인증 실패, 로컬 호환 검증으로 전환:', err);
+      }
+    }
+    if (matchData.adminPwHash) return await makeMatchPwHash(pw) === matchData.adminPwHash;
+    return matchData.adminPw === pw;
+  }
+
+  async function migrateMatchAdminPwIfLegacy(pw, matchData) {
+    if (!pw || !matchData || matchData.adminPwHash || matchData.adminPw !== pw) return;
+    try {
+      const adminPwHash = await makeMatchPwHash(pw);
+      await db.collection("matches").doc(GAME_ID).update({ adminPw: '0000', adminPwHash: adminPwHash });
+      matchData.adminPw = '0000';
+      matchData.adminPwHash = adminPwHash;
+    } catch (err) {
+      console.warn('[Auth] 매치 비밀번호 마이그레이션 실패:', err);
+    }
+  }
+  /* ═════════════════════════════════════════════════════════════════════════════ */
+
+  /* ═══════════════════════ 🛡 XSS 방어 헬퍼 ═══════════════════════════════════ */
+  /* innerHTML에 사용자 입력을 넣기 전 HTML 특수문자를 이스케이프 */
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /* photoUrl의 안전 검증: data:image/ 또는 http(s):// 만 허용 */
+  /* javascript: 같은 위험한 프로토콜 차단 */
+  function safePhotoUrl(url) {
+    if (!url) return '';
+    const s = String(url).trim();
+    if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(s)) return s;
+    if (/^https?:\/\//i.test(s)) return s;
+    return '';
+  }
+
+  function isActiveEntry(entry) {
+    return !!entry && entry.active !== false && !entry.canceledAt;
+  }
+  /* ═════════════════════════════════════════════════════════════════════════════ */
+
+  /* ═══════════════════════ 🌀 로딩 상태 유틸 ═══════════════════════════════════ */
+  function setButtonLoading(btn, isLoading, loadingText) {
+    if (!btn) return;
+    if (isLoading) {
+      if (!btn.dataset.originalText) {
+        btn.dataset.originalText = btn.textContent;
+      }
+      btn.textContent = loadingText || '처리 중...';
+      btn.disabled = true;
+      btn.classList.add('btn-loading');
+    } else {
+      if (btn.dataset.originalText) {
+        btn.textContent = btn.dataset.originalText;
+        delete btn.dataset.originalText;
+      }
+      btn.disabled = false;
+      btn.classList.remove('btn-loading');
+    }
+  }
+  /* ═════════════════════════════════════════════════════════════════════════════ */
+
+  let globalMatchData = null; let globalEntries = []; let globalUsersMap = {}; let globalRoster = { waiting: [], teams: [] };
+  let userRadarChart = null; let playerRadarChart = null; let isSubmitting = false;
+  let currentTab = 'member'; 
+  let currentPlayerForModal = null;
+  
+  // 👕 유니폼 관리 (선수도 팀별 유니폼 정보 확인 가능)
+  let globalJerseyList = []; // settings/jerseys의 list
+  let globalTeamJerseys = {}; // matches/{gameId}.teamJerseys
+  
+  const TEAM_COLORS = [{border:'#FF6384'},{border:'#36A2EB'},{border:'#4BC0C0'},{border:'#FFCE56'},{border:'#C9CBCF'},{border:'#9966FF'}];
+
+  window.onload = function() {
+    if (!GAME_ID) { showToast("잘못된 접근입니다.", 'error'); setTimeout(() => { window.location.href = 'index.html'; }, 1500); return; }
+    loadSettingsRealtime();
+    loadJerseysRealtime(); // 유니폼 마스터 목록 실시간 구독
+    loadMatchAndRosterRealtime();
+    if (URL_MODE === 'guest') { openAppModal(); switchTab('guest'); }
+  };
+
+  function openAppModal() { 
+    document.getElementById('applicationModal').classList.add('show'); 
+    document.getElementById('fabWrapper').classList.remove('open'); 
+    applyAutoLoginUI(); // 모달 열 때마다 자동 로그인 세션 상태 반영
+  }
+  function closeAppModal() { document.getElementById('applicationModal').classList.remove('show'); }
+
+  function toggleFab(e) { if(e) e.stopPropagation(); document.getElementById('fabWrapper').classList.toggle('open'); }
+  document.addEventListener('click', function(event) {
+    const fab = document.getElementById('fabWrapper');
+    if (fab && fab.classList.contains('open') && !fab.contains(event.target)) fab.classList.remove('open');
+  });
+
+  function loadSettingsRealtime() {
+    db.collection("settings").doc("system").onSnapshot((doc) => {
+      if (doc.exists && doc.data().popup && doc.data().popup.text) {
+        const popup = doc.data().popup; const now = new Date(); const exp = popup.expireDate ? new Date(popup.expireDate + 'T23:59:59') : null;
+        if (!exp || now <= exp) {
+          const key = 'fcmon_popup_' + (popup.createdAt || '').replace(/[^a-zA-Z0-9]/g, '');
+          if (localStorage.getItem(key) !== 'dismissed') {
+            document.getElementById('popupContent').textContent = popup.text;
+            document.getElementById('popupExpire').textContent = popup.expireDate ? '게시 기한: ' + popup.expireDate + '까지' : '';
+            document.getElementById('popupOverlay').style.display = 'flex'; window._popupKey = key;
+          }
+        }
+      }
+    });
+  }
+  function dismissPopup(){ if(window._popupKey) localStorage.setItem(window._popupKey, 'dismissed'); document.getElementById('popupOverlay').style.display='none'; }
+
+  function switchTab(mode) {
+    currentTab = mode;
+    document.getElementById('tabBtnMember').classList.remove('active'); document.getElementById('tabBtnGuest').classList.remove('active');
+    document.getElementById('memberForm').style.display = 'none'; document.getElementById('guestForm').style.display = 'none';
+    const btnSubmit = document.getElementById('submitBtn');
+    
+    if (mode === 'member') {
+      document.getElementById('tabBtnMember').classList.add('active'); document.getElementById('memberForm').style.display = 'block';
+      btnSubmit.textContent = '정회원 신청 완료하기'; btnSubmit.classList.remove('guest-mode');
+      applyAutoLoginUI(); // 탭 전환 시 자동 로그인 상태에 맞는 UI 적용
+    } else {
+      document.getElementById('tabBtnGuest').classList.add('active'); document.getElementById('guestForm').style.display = 'block';
+      btnSubmit.textContent = '게스트(용병) 신청 완료하기'; btnSubmit.classList.add('guest-mode');
+    }
+  }
+
+  function loadMatchAndRosterRealtime() {
+    db.collection("matches").doc(GAME_ID).onSnapshot((doc) => {
+      if (!doc.exists || doc.data().deletedAt) { showToast("삭제되거나 존재하지 않는 매치입니다.", 'error'); setTimeout(() => { window.location.href = 'index.html'; }, 1500); return; }
+      globalMatchData = doc.data();
+      // 팀별 유니폼 배정 실시간 반영
+      globalTeamJerseys = globalMatchData.teamJerseys || {};
+      processRoster();
+    });
+    db.collection("users").onSnapshot((snapshot) => { snapshot.forEach(doc => { globalUsersMap[doc.data().name] = { id: doc.id, ...doc.data() }; }); processRoster(); });
+    db.collection("matches").doc(GAME_ID).collection("entries").orderBy("addedAt", "asc").onSnapshot((snapshot) => { globalEntries = []; snapshot.forEach((doc) => { const entry = doc.data(); if (isActiveEntry(entry)) globalEntries.push(entry); }); document.getElementById('totalCount').innerText = globalEntries.length + '명'; processRoster(); });
+  }
+  
+  /* 👕 유니폼 마스터 목록 실시간 구독 */
+  function loadJerseysRealtime() {
+    db.collection("settings").doc("jerseys").onSnapshot((doc) => {
+      if (doc.exists && doc.data().list && Array.isArray(doc.data().list)) {
+        globalJerseyList = doc.data().list;
+      } else {
+        globalJerseyList = [];
+      }
+      renderRosterUI(); // 유니폼 변경 시 UI 재렌더
+    });
+  }
+
+  /* ★ 메인 화면과 동일한 매치 상태 계산 함수 모음 */
+  function getMatchStatus(dateTimeStr, currentCount, capacity, isDone) {
+    if (isDone) return 'done';
+    var now = new Date(), start = new Date(dateTimeStr), end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    if (now >= end) return 'done'; if (now >= start) return 'live';
+    if ((start - now) / 60000 <= 60 || currentCount >= capacity) return 'soon';
+    return 'open';
+  }
+
+  function getTimeChip(dateTimeStr, status) {
+    var now = new Date(), start = new Date(dateTimeStr);
+    if (status === 'done') return { text: '경기 종료', cls: 'done' };
+    if (status === 'live') return { text: '경기중 ' + Math.floor((now - start) / 60000) + '분', cls: 'live' };
+    var diffMin = Math.floor((start - now) / 60000);
+    if (diffMin < 60) return { text: diffMin + '분 후 시작', cls: '' };
+    var diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return { text: diffH + '시간 후', cls: '' };
+    return { text: Math.floor(diffH / 24) + '일 후 시작', cls: '' };
+  }
+
+  function getStatusBadge(status, timeText) {
+    var map = { open: { cls: 'badge-open', label: '모집중' }, soon: { cls: 'badge-soon', label: '마감임박' }, live: { cls: 'badge-live', label: '경기중' }, done: { cls: 'badge-done', label: '경기종료' } };
+    var s = map[status] || map.open;
+    var timeHtml = '';
+    if (timeText && timeText !== '경기 종료') {
+      timeHtml = '<span class="status-time">' + timeText + '</span>';
+    }
+    return '<div class="status-badge ' + s.cls + '"><span class="dot"></span>' + s.label + timeHtml + '</div>';
+  }
+
+  /* ★ 메인 화면과 동일한 디자인으로 매치 카드 렌더링 */
+  function renderMatchInfoCard() {
+    if(!globalMatchData) return;
+    var capacity = globalMatchData.perTeam * globalMatchData.totalTeams;
+    var currentPlayers = globalEntries.length;
+    var status = getMatchStatus(globalMatchData.dateTime, currentPlayers, capacity, globalMatchData.status === '매치종료');
+    var chip = getTimeChip(globalMatchData.dateTime, status);
+    var badgeHtml = getStatusBadge(status, chip.text);
+
+    var dateStr = new Date(globalMatchData.dateTime).toLocaleString('ko-KR', { month:'short', day:'numeric', weekday:'short', hour:'2-digit', minute:'2-digit' });
+    var fillPct = capacity > 0 ? Math.min(100, Math.round(currentPlayers / capacity * 100)) : 0;
+    var fillCls = fillPct >= 100 ? 'full' : fillPct >= 75 ? 'soon' : '';
+
+    var html = '<div class="card-top"><div class="match-loc">' + escapeHtml(globalMatchData.location) + '</div>' + badgeHtml + '</div>' +
+               '<div class="match-date">' + dateStr + '</div>' +
+               '<div class="card-bottom">' +
+                 '<div class="capacity-wrap"><div class="capacity-bar-track"><div class="capacity-bar-fill ' + fillCls + '" style="width:' + fillPct + '%"></div></div><span class="capacity-count">' + currentPlayers + '<span class="capacity-text">/' + capacity + '명</span></span></div>' +
+               '</div>';
+    
+    const cardEl = document.getElementById('matchInfoCard');
+    cardEl.innerHTML = html;
+    cardEl.className = 'match-info-card status-' + status;
+  }
+
+  function processRoster() {
+    if (!globalMatchData) return;
+    globalRoster.teams = []; const totalTeams = globalMatchData.totalTeams || 3; const DEFAULT_TEAM_NAMES = ['레드팀','블루팀','그린팀','옐로팀','화이트팀','블랙팀'];
+    for(let i=0; i<totalTeams; i++) globalRoster.teams.push({ name: DEFAULT_TEAM_NAMES[i], players: [] }); globalRoster.waiting = [];
+    globalEntries.forEach(e => {
+      let p; if (e.userId && e.userId.startsWith('GUEST-')) { p = e; } 
+      else { let latest = globalUsersMap[e.name] || {}; p = { ...e, photoUrl: latest.photoUrl || e.photoUrl || '', ovr: latest.ovr || e.ovr || 50, pos: latest.pos || e.pos || 'MF', stats: latest.stats || e.stats || [50,50,50,50,50,50,50,50] }; }
+      if (p.teamLabel === '미정') globalRoster.waiting.push(p);
+      else { const teamIdx = DEFAULT_TEAM_NAMES.indexOf(p.teamLabel); if (teamIdx !== -1 && teamIdx < globalRoster.teams.length) globalRoster.teams[teamIdx].players.push(p); else globalRoster.waiting.push(p); }
+    });
+    renderMatchInfoCard(); // ★ 매치 카드 업데이트 (인원 게이지 포함)
+    renderRosterUI();
+  }
+
+  function renderRosterUI() {
+    let html = ''; 
+    const session = window.loadAutoLoginSession && window.loadAutoLoginSession();
+    const myUserId = session ? session.userId : null;
+    if (globalRoster.waiting.length > 0) { 
+      html += '<div style="margin-bottom:24px"><div style="font-size:13px;color:var(--muted);margin-bottom:12px;font-weight:700;">⏳ 대기열 ('+globalRoster.waiting.length+'명)</div><div class="players-grid">'; 
+      globalRoster.waiting.forEach((p, pi) => {
+        const safeName = escapeHtml(p.name);
+        const safePos = escapeHtml(p.pos || 'MF');
+        const safeOvr = escapeHtml(p.ovr);
+        const safeUrl = safePhotoUrl(p.photoUrl);
+        let avatar = safeUrl ? `<img src="${escapeHtml(safeUrl)}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="./sublogo2.png" style="width:100%; height:100%; object-fit:contain; padding:4px;">`;
+        const myClass = myUserId && p.userId === myUserId ? ' player-card-mine' : '';
+        const noteIndicator = p.note ? `<span class="card-note-dot" title="${escapeHtml(p.note)}">💬</span>` : '';
+        html += `<div class="player-card${myClass}" onclick="showPlayerStat('waiting',${pi})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name">${safeName}</div></div>`;
+      }); 
+      html += '</div></div>'; 
+    }
+    globalRoster.teams.forEach((t, index) => { 
+      if (t.players.length > 0) { 
+        // 유니폼 정보 표시 (배정된 경우만)
+        const jerseyId = globalTeamJerseys[index] || '';
+        const jersey = globalJerseyList.find(j => j.id === jerseyId);
+        let jerseyChip = '';
+        if (jersey) {
+          const safeJColor = escapeHtml(jersey.color);
+          const safeJName = escapeHtml(jersey.name);
+          jerseyChip = `<span class="jersey-chip"><span class="jersey-dot" style="background:${safeJColor};"></span>${safeJName}</span>`;
+        }
+        
+        const teamDotColor = TEAM_COLORS[index % TEAM_COLORS.length].border;
+        html += '<div style="margin-bottom:24px"><div class="team-header-row"><span class="team-header-title"><span class="team-dot" style="background:'+teamDotColor+';"></span>'+escapeHtml(t.name)+' ('+t.players.length+'명)</span>'+jerseyChip+'</div><div class="players-grid">'; 
+        t.players.forEach((p, pi) => {
+          const safeName = escapeHtml(p.name);
+          const safePos = escapeHtml(p.pos || 'MF');
+          const safeOvr = escapeHtml(p.ovr);
+          const safeUrl = safePhotoUrl(p.photoUrl);
+          let avatar = safeUrl ? `<img src="${escapeHtml(safeUrl)}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="./sublogo2.png" style="width:100%; height:100%; object-fit:contain; padding:4px;">`;
+          const myClass = myUserId && p.userId === myUserId ? ' player-card-mine' : '';
+          const noteIndicator = p.note ? `<span class="card-note-dot" title="${escapeHtml(p.note)}">💬</span>` : '';
+          html += `<div class="player-card${myClass}" style="border-color:rgba(0,230,118,0.4)" onclick="showPlayerStat('team',${pi},${index})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name">${safeName}</div></div>`;
+        }); 
+        html += '</div></div>'; 
+      } 
+    });
+    if (html === '') html = '<div style="text-align:center;color:var(--muted);padding:24px 0;background:var(--bg3);border-radius:16px;border:1px dashed var(--border);">아직 참가자가 없습니다. 플로팅 버튼을 눌러 신청해보세요!</div>'; 
+    document.getElementById('rosterContent').innerHTML = html;
+  }
+
+  function handleApplication() { if (currentTab === 'member') submitMemberEntry(); else submitGuestEntry(); }
+
+  async function submitMemberEntry() {
+    if (isSubmitting) return;
+    isSubmitting = true;
+    const btn = document.getElementById('submitBtn'); 
+    setButtonLoading(btn, true, '확인 중...');
+    
+    // ════════ 자동 로그인 세션 활용 분기 ════════
+    const session = window.loadAutoLoginSession();
+    const banner = document.getElementById('autoLoginBanner');
+    const isAutoLoginActive = session && banner && banner.style.display !== 'none';
+    
+    if (isAutoLoginActive) {
+      // 세션 있음 → 이름/비번 검증 스킵, 저장된 userId로 바로 진행
+      try {
+        const userDoc = await db.collection("users").doc(session.userId).get();
+        if (!userDoc.exists) {
+          // 세션은 있는데 DB에서 삭제된 유저 → 세션 클리어 후 수동 로그인으로
+          window.clearAutoLoginSession();
+          showToast('❌ 계정을 찾을 수 없습니다. 다시 로그인해주세요.', 'error');
+          switchToManualLogin();
+          resetBtn();
+          return;
+        }
+        const userData = userDoc.data();
+        const userId = session.userId;
+        const entryRef = db.collection("matches").doc(GAME_ID).collection("entries").doc(userId);
+        const entryDoc = await entryRef.get();
+        if (entryDoc.exists && isActiveEntry(entryDoc.data())) { 
+          if (await showConfirm('이미 신청 완료된 매치입니다.\n참가를 취소하시겠습니까?', { title: '참가 취소', danger: true, confirmText: '참가 취소' })) executeCancellation(entryRef); 
+          else resetBtn(); 
+          return; 
+        }
+        executeRegistration(entryRef, { userId: userId, name: userData.name, teamLabel: '미정', pos: userData.pos || 'MF', ovr: userData.ovr || 50, stats: userData.stats || [50,50,50,50,50,50,50,50], photoUrl: userData.photoUrl || '', addedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      } catch (err) {
+        showToast('❌ DB 통신 오류: ' + err.message, 'error'); 
+        resetBtn();
+      }
+      return;
+    }
+    
+    // ════════ 수동 로그인 (기존 플로우) ════════
+    const name = document.getElementById('playerName').value.trim(); 
+    const pw = document.getElementById('playerPw').value.trim(); 
+    if (!name || !pw) { 
+      isSubmitting = false;
+      setButtonLoading(btn, false);
+      return showToast('⚠️ 이름과 비밀번호를 모두 입력하세요.', 'warning'); 
+    }
+    
+    // "로그인 유지" 체크박스 상태
+    const rememberMe = document.getElementById('rememberMe');
+    const shouldRemember = rememberMe ? rememberMe.checked : false;
+
+    // 마스터 비번 여부를 먼저 판정 (forEach 내부에서 await 불가하므로)
+    const isMaster = await verifyMasterPw(pw);
+
+    db.collection("users").where("name", "==", name).get().then(async (querySnapshot) => {
+      if (querySnapshot.empty) { showToast('❌ 등록되지 않은 이름입니다. 선수 등록을 해주세요!', 'error'); resetBtn(); return; }
+      let userData = null; let userId = null; let userRef = null; let shouldMigrateUserPw = false;
+      for (const doc of querySnapshot.docs) {
+        const data = doc.data();
+        const userPwOk = await verifyUserPw(pw, data, doc.id);
+        if (userPwOk || isMaster) {
+          userData = data;
+          userId = doc.id;
+          userRef = doc.ref;
+          shouldMigrateUserPw = userPwOk && !data.passwordHash;
+        }
+      }
+      if (!userData) { showToast('❌ 비밀번호가 일치하지 않습니다.', 'error'); resetBtn(); return; }
+      if (shouldMigrateUserPw) await migrateUserPwIfLegacy(userRef, pw, userData);
+      
+      // 로그인 성공 + "유지" 체크되어 있으면 세션 저장
+      if (shouldRemember && !isMaster) {
+        window.saveAutoLoginSession(userId, userData.name);
+      }
+      
+      const entryRef = db.collection("matches").doc(GAME_ID).collection("entries").doc(userId);
+      entryRef.get().then(async (entryDoc) => {
+        if (entryDoc.exists && isActiveEntry(entryDoc.data())) { 
+          if(await showConfirm('이미 신청 완료된 매치입니다.\n참가를 취소하시겠습니까?', { title: '참가 취소', danger: true, confirmText: '참가 취소' })) executeCancellation(entryRef); 
+          else resetBtn(); 
+          return; 
+        }
+        executeRegistration(entryRef, { userId: userId, name: userData.name, teamLabel: '미정', pos: userData.pos || 'MF', ovr: userData.ovr || 50, stats: userData.stats || [50,50,50,50,50,50,50,50], photoUrl: userData.photoUrl || '', addedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      });
+    }).catch((err) => { showToast('❌ DB 통신 오류: ' + err.message, 'error'); resetBtn(); });
+  }
+  
+  /* ════════ 자동 로그인 UI 제어 ════════ */
+  function applyAutoLoginUI() {
+    const session = window.loadAutoLoginSession();
+    const banner = document.getElementById('autoLoginBanner');
+    const manualForm = document.getElementById('manualLoginForm');
+    if (!banner || !manualForm) return;
+    
+    if (session) {
+      // 세션 있음 → 배너 노출 + 수동 폼 숨김
+      document.getElementById('autoLoginName').textContent = session.name + ' 님';
+      banner.style.display = 'block';
+      manualForm.style.display = 'none';
+      // 버튼 문구도 간결하게
+      const btn = document.getElementById('submitBtn');
+      if (btn && currentTab === 'member' && !btn.classList.contains('btn-loading')) {
+        btn.textContent = '⚽ 바로 참가하기';
+      }
+    } else {
+      // 세션 없음 → 수동 폼만
+      banner.style.display = 'none';
+      manualForm.style.display = 'block';
+      const btn = document.getElementById('submitBtn');
+      if (btn && currentTab === 'member' && !btn.classList.contains('btn-loading')) {
+        btn.textContent = '정회원 신청 완료하기';
+      }
+    }
+  }
+  
+  function switchToManualLogin() {
+    window.clearAutoLoginSession();
+    document.getElementById('autoLoginBanner').style.display = 'none';
+    document.getElementById('manualLoginForm').style.display = 'block';
+    document.getElementById('playerName').value = '';
+    document.getElementById('playerPw').value = '';
+    document.getElementById('playerName').focus();
+  }
+
+  function submitGuestEntry() {
+    if (isSubmitting) return; const name = document.getElementById('g_name').value.trim(); const pos = document.getElementById('g_pos').value; const pw = document.getElementById('g_pw').value.trim(); const inputOvr = Number(document.getElementById('g_ovr').value) || 50; 
+    if (!name || !pw) return showToast('⚠️ 이름과 취소용 비밀번호를 모두 입력하세요.', 'warning');
+    isSubmitting = true; const btn = document.getElementById('submitBtn'); 
+    setButtonLoading(btn, true, '확인 중...');
+    const guestNameLabel = name + '(용병)'; const entriesRef = db.collection("matches").doc(GAME_ID).collection("entries");
+    entriesRef.where("name", "==", guestNameLabel).get().then(async snap => {
+      let existingGuest = null; snap.forEach(doc => { const entry = doc.data(); if (isActiveEntry(entry) && entry.guestPw === pw && entry.userId.startsWith('GUEST-')) existingGuest = doc; });
+      if (existingGuest) { 
+        if(await showConfirm('게스트 명단에 이미 존재합니다.\n참가를 취소하시겠습니까?', { title: '참가 취소', danger: true, confirmText: '참가 취소' })) executeCancellation(existingGuest.ref); 
+        else resetBtn(); 
+        return; 
+      }
+      const guestId = 'GUEST-' + Date.now();
+      executeRegistration(entriesRef.doc(guestId), { userId: guestId, name: guestNameLabel, teamLabel: '미정', pos: pos, ovr: inputOvr, guestPw: pw, stats: [inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr], photoUrl: '', addedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    }).catch((err) => { showToast('❌ DB 오류: ' + err.message, 'error'); resetBtn(); });
+  }
+
+  function executeRegistration(ref, data) { 
+    data.active = true;
+    const matchRef = db.collection("matches").doc(GAME_ID);
+    db.runTransaction((tx) => {
+      return Promise.all([tx.get(ref), tx.get(matchRef)]).then(([entryDoc, matchDoc]) => {
+        if (entryDoc.exists && isActiveEntry(entryDoc.data())) {
+          throw new Error('이미 신청 완료된 매치입니다.');
+        }
+        tx.set(ref, data);
+        if (matchDoc.exists) {
+          tx.update(matchRef, { currentCount: (matchDoc.data().currentCount || 0) + 1 });
+        }
+      });
+    }).then(() => { 
+      closeAppModal();
+      document.getElementById('mainContent').style.display = 'none'; 
+      document.getElementById('fabWrapper').style.display = 'none'; 
+      document.getElementById('successScreen').style.display = 'block'; 
+    }).catch((err) => { showToast('❌ 등록 오류: ' + err.message, 'error'); resetBtn(); }); 
+  }
+
+  function cancelEntryWithCount(ref, canceledBy) {
+    const matchRef = db.collection("matches").doc(GAME_ID);
+    let savedEntry = null;
+    return db.runTransaction((tx) => {
+      return Promise.all([tx.get(ref), tx.get(matchRef)]).then(([entryDoc, matchDoc]) => {
+        if (!entryDoc.exists || !isActiveEntry(entryDoc.data())) {
+          throw new Error('이미 취소된 참가 신청입니다');
+        }
+        savedEntry = entryDoc.data();
+        tx.update(ref, { active: false, canceledAt: new Date().toISOString(), canceledBy: canceledBy || 'self' });
+        if (matchDoc.exists && matchDoc.data().currentCount > 0) {
+          tx.update(matchRef, { currentCount: matchDoc.data().currentCount - 1 });
+        }
+      });
+    }).then(() => savedEntry);
+  }
+
+  function restoreEntryWithCount(ref, savedEntry) {
+    const matchRef = db.collection("matches").doc(GAME_ID);
+    return db.runTransaction((tx) => {
+      return tx.get(matchRef).then((matchDoc) => {
+        tx.set(ref, savedEntry);
+        if (matchDoc.exists) {
+          tx.update(matchRef, { currentCount: (matchDoc.data().currentCount || 0) + 1 });
+        }
+      });
+    });
+  }
+  
+  async function executeCancellation(ref) { 
+    const btn = document.getElementById('submitBtn'); 
+    setButtonLoading(btn, true, '취소 처리 중...');
+    try {
+      const savedEntryId = ref.id;
+      const savedEntry = await cancelEntryWithCount(ref, 'self');
+      
+      closeAppModal(); resetForm();
+      
+      // 3) Undo 토스트 표시
+      showUndoToast('참가 신청이 취소되었습니다', async () => {
+        // 되돌리기: entry 원본 복원 + currentCount 복원
+        try {
+          await restoreEntryWithCount(db.collection("matches").doc(GAME_ID).collection("entries").doc(savedEntryId), savedEntry);
+          showToast('참가 신청이 복원되었습니다', 'success');
+        } catch (err) {
+          showToast('❌ 복원 실패: ' + err.message, 'error');
+        }
+      }, { duration: 5000, label: '되돌리기' });
+      
+    } catch (err) { 
+      showToast('❌ 취소 오류: ' + err.message, 'error'); 
+      resetBtn(); 
+    }
+  }
+  
+  function resetBtn() { 
+    isSubmitting = false; 
+    const btn = document.getElementById('submitBtn'); 
+    btn.disabled = false; 
+    btn.classList.remove('btn-loading');
+    delete btn.dataset.originalText;
+    btn.textContent = currentTab === 'member' ? '정회원 신청 완료하기' : '게스트(용병) 신청 완료하기'; 
+  }
+  
+  function resetForm() { 
+    document.getElementById('playerName').value = ''; document.getElementById('playerPw').value = ''; 
+    document.getElementById('g_name').value = ''; document.getElementById('g_pw').value = ''; document.getElementById('g_ovr').value = ''; 
+    document.getElementById('mainContent').style.display = 'block'; 
+    document.getElementById('fabWrapper').style.display = 'flex'; 
+    document.getElementById('successScreen').style.display = 'none'; 
+    resetBtn(); window.scrollTo({ top: 0, behavior: 'smooth' }); 
+  }
+
+  function showAllTeamsChart() { let datasets = []; globalRoster.teams.forEach((team, tIdx) => { if (team.players.length === 0) return; let avgs = {s:0,sh:0,p:0,dr:0,de:0,ph:0,st:0,ag:0}; team.players.forEach(p => { let sArr = p.stats || [50,50,50,50,50,50,50,50]; avgs.s+=sArr[0]; avgs.sh+=sArr[1]; avgs.p+=sArr[2]; avgs.dr+=sArr[3]; avgs.de+=sArr[4]; avgs.ph+=sArr[5]; avgs.st+=sArr[6]; avgs.ag+=sArr[7]; }); let len = team.players.length; let dataArray = [Math.round(avgs.s/len),Math.round(avgs.sh/len),Math.round(avgs.p/len),Math.round(avgs.dr/len),Math.round(avgs.de/len),Math.round(avgs.ph/len),Math.round(avgs.st/len),Math.round(avgs.ag/len)]; datasets.push({label:team.name, data:dataArray, backgroundColor:'transparent', borderColor:TEAM_COLORS[tIdx%6].border, pointBackgroundColor:TEAM_COLORS[tIdx%6].border, borderWidth:2}); }); if (!datasets.length) { showToast("배정된 팀원이 없습니다.", 'warning'); return; } document.getElementById('userChartModal').classList.add('show'); if (userRadarChart) userRadarChart.destroy(); let ctx = document.getElementById('userRadarCanvas').getContext('2d'); Chart.defaults.color='#E8F5E9'; userRadarChart = new Chart(ctx, { type:'radar', data:{labels:['속도','슈팅','패스','드리블','수비','피지컬','체력','민첩성'], datasets:datasets}, options:{ scales:{ r:{ min:0, max:100, ticks:{display:false}, grid:{color:'rgba(255,255,255,0.1)'}, pointLabels:{font:{size:12,weight:'bold'}} } }, plugins:{legend:{display:true,position:'bottom'}} } }); }
+  function closeChartModal() { document.getElementById('userChartModal').classList.remove('show'); }
+
+  function updatePsNoteCounter() {
+    const input = document.getElementById('psMyNoteInput');
+    const counter = document.getElementById('psMyNoteCounter');
+    if (!input || !counter) return;
+    const len = input.value.length;
+    counter.textContent = len + ' / 20';
+    counter.style.color = len >= 20 ? 'var(--amber)' : 'var(--muted)';
+  }
+
+  async function savePsMyNote() {
+    if (!currentPlayerForModal) { showToast('선수 정보를 찾을 수 없습니다', 'error'); return; }
+    const p = currentPlayerForModal;
+    const session = window.loadAutoLoginSession && window.loadAutoLoginSession();
+    if (!session || session.userId !== p.userId) {
+      showToast('본인만 한마디를 작성할 수 있습니다', 'warning');
+      return;
+    }
+
+    const input = document.getElementById('psMyNoteInput');
+    const btn = document.getElementById('psSaveNoteBtn');
+    const note = (input.value || '').trim().substring(0, 20);
+
+    if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+    try {
+      await db.collection("matches").doc(GAME_ID).collection("entries").doc(p.userId).update({ note: note });
+      p.note = note;
+      renderRosterUI();
+      showToast(note ? '✅ 한마디 저장됨' : '✅ 한마디 삭제됨', 'success');
+      if (input) input.blur();
+      setTimeout(() => closePlayerStatModal(), 600);
+    } catch (err) {
+      showToast('❌ 저장 실패: ' + err.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+    }
+  }
+  
+  function showPlayerStat(type, pIdx, tIdx) { 
+    let p; 
+    if (type === 'waiting') p = globalRoster.waiting[pIdx]; 
+    else p = globalRoster.teams[tIdx].players[pIdx]; 
+    if (!p) return; 
+
+    currentPlayerForModal = p;
+
+    const btnCancel = document.getElementById('btnCancelEntry');
+    if(btnCancel) {
+      btnCancel.textContent = '참가 취소하기';
+      btnCancel.disabled = false;
+    }
+
+    const safeUrl = safePhotoUrl(p.photoUrl);
+    let avatar = safeUrl ? `<img src="${escapeHtml(safeUrl)}" style="width:100%;height:100%;object-fit:cover;">` : `<img src="./sublogo2.png" style="width:100%; height:100%; object-fit:contain; padding:8px;">`; 
+    document.getElementById('psAvatar').innerHTML = avatar; 
+    document.getElementById('psName').innerText = p.name; 
+    var posEl = document.getElementById('psPos'); posEl.innerText = p.pos || 'MF'; 
+    var posColors = {FW:'#FF4757',MF:'#2ED573',DF:'#1E90FF',GK:'#FFA502'}; posEl.style.backgroundColor = posColors[p.pos] || posColors.MF; 
+    document.getElementById('psOvr').innerText = 'OVR ' + (p.ovr || 50); 
+    
+    let stats = p.stats || [50,50,50,50,50,50,50,50]; 
+    let labels = ['속도','슈팅','패스','드리블','수비','피지컬','체력','민첩성']; let barsHtml = ''; 
+    labels.forEach(function(label, i) { 
+      let val = stats[i]; 
+      let barColor = val >= 75 ? 'var(--green)' : val >= 50 ? '#FFCA28' : '#FF4757'; 
+      barsHtml += '<div style="display:flex;align-items:center;margin-bottom:6px;"><div style="width:42px;font-size:11px;color:var(--muted);font-weight:700;flex-shrink:0;">' + label + '</div><div style="flex:1;height:6px;background:rgba(255,255,255,0.07);border-radius:3px;margin:0 8px;overflow:hidden;"><div style="width:' + val + '%;height:100%;background:' + barColor + ';border-radius:3px;transition:width 0.5s;"></div></div><div style="width:24px;font-size:12px;font-weight:700;color:' + barColor + ';text-align:right;">' + val + '</div></div>'; 
+    }); 
+    document.getElementById('psStatBars').innerHTML = barsHtml; 
+    
+    if (playerRadarChart) playerRadarChart.destroy(); 
+    Chart.defaults.color = '#E8F5E9'; 
+    playerRadarChart = new Chart(document.getElementById('playerRadarCanvas').getContext('2d'), { type: 'radar', data: { labels: labels, datasets: [{ label: p.name, data: stats, backgroundColor: 'rgba(0, 230, 118, 0.25)', borderColor: '#00E676', pointBackgroundColor: '#00E676', borderWidth: 2, pointRadius: 3 }] }, options: { scales: { r: { min: 0, max: 100, ticks: { display: false, stepSize: 20 }, grid: { color: 'rgba(255,255,255,0.08)' }, angleLines: { color: 'rgba(255,255,255,0.08)' }, pointLabels: { font: { size: 11, weight: 'bold' } } } }, plugins: { legend: { display: false } } } }); 
+
+    const session = window.loadAutoLoginSession && window.loadAutoLoginSession();
+    const isMyCard = session && p.userId && session.userId === p.userId;
+    const myNoteBox = document.getElementById('psMyNoteBox');
+    const otherNoteBox = document.getElementById('psOtherNoteBox');
+    if (isMyCard) {
+      if (myNoteBox) myNoteBox.style.display = 'block';
+      if (otherNoteBox) otherNoteBox.style.display = 'none';
+      const noteInput = document.getElementById('psMyNoteInput');
+      if (noteInput) noteInput.value = p.note || '';
+      updatePsNoteCounter();
+    } else {
+      if (myNoteBox) myNoteBox.style.display = 'none';
+      if (otherNoteBox) {
+        if (p.note) {
+          otherNoteBox.style.display = 'block';
+          document.getElementById('psOtherNoteText').textContent = p.note;
+        } else {
+          otherNoteBox.style.display = 'none';
+        }
+      }
+    }
+
+    document.getElementById('playerStatModal').classList.add('show'); 
+  }
+  
+  function closePlayerStatModal() { document.getElementById('playerStatModal').classList.remove('show'); }
+
+  async function cancelFromModal() {
+    if(!currentPlayerForModal) return;
+    const p = currentPlayerForModal;
+    
+    const pw = await showPrompt(`[${p.name}] 님의 참가를 취소하시겠습니까?\n본인 확인을 위해 비밀번호 숫자 4자리를 입력해주세요.`, {
+      title: '참가 취소',
+      type: 'password',
+      placeholder: '비밀번호 4자리',
+      maxlength: 4
+    });
+    if(pw === null || pw.trim() === '') return;
+
+    let isAuth = false;
+    // 1) 마스터 비번(해시) 검증
+    if(await verifyMasterPw(pw)) {
+        isAuth = true;
+    } else if (p.userId && p.userId.startsWith('GUEST-')) {
+        if(p.guestPw === pw) isAuth = true;
+    } else {
+        const userDbInfo = globalUsersMap[p.name];
+        if(userDbInfo && await verifyUserPw(pw, userDbInfo, p.userId)) {
+          isAuth = true;
+          await migrateUserPwIfLegacy(db.collection("users").doc(p.userId), pw, userDbInfo);
+        }
+    }
+
+    if(!isAuth) {
+        return showToast('❌ 비밀번호가 일치하지 않습니다.', 'error');
+    }
+
+    const btn = document.getElementById('btnCancelEntry');
+    setButtonLoading(btn, true, '취소 처리 중...');
+
+    const ref = db.collection("matches").doc(GAME_ID).collection("entries").doc(p.userId);
+    try {
+      const savedEntryId = p.userId;
+      const savedEntry = await cancelEntryWithCount(ref, 'self');
+      
+      closePlayerStatModal();
+      
+      // 3) Undo 토스트
+      showUndoToast('참가 신청이 취소되었습니다', async () => {
+        try {
+          await restoreEntryWithCount(db.collection("matches").doc(GAME_ID).collection("entries").doc(savedEntryId), savedEntry);
+          showToast('참가 신청이 복원되었습니다', 'success');
+        } catch (err) {
+          showToast('❌ 복원 실패: ' + err.message, 'error');
+        }
+      }, { duration: 5000, label: '되돌리기' });
+      
+    } catch (err) {
+      showToast('❌ 취소 오류: ' + err.message, 'error'); 
+      setButtonLoading(btn, false);
+      btn.textContent = '참가 취소하기';
+    }
+  }
+
+  function goBack() { window.location.href = 'index.html'; } function goToProfileReg() { window.location.href = 'profile.html?tab=reg'; }
+  // showToast는 공용 라이브러리에서 제공 (page bottom 참조)
+  function openAdminPwModal() { document.getElementById('adminPwModal').classList.add('show'); document.getElementById('adminPwInput').value = ''; document.getElementById('adminPwInput').focus(); document.getElementById('fabWrapper').classList.remove('open'); }
+  function closeAdminPwModal() { document.getElementById('adminPwModal').classList.remove('show'); }
+  async function confirmAdminPw() {
+    var pw = document.getElementById('adminPwInput').value.trim();
+    if (!pw) return;
+    // 1) 매치별 매니저 비번 일치 또는 2) 마스터 비번 해시 일치
+    const isMaster = await verifyMasterPw(pw);
+    const isMatchManager = await verifyMatchAdminPw(pw, globalMatchData, GAME_ID);
+    if (isMaster || isMatchManager) {
+      if (!isMaster && isMatchManager) await migrateMatchAdminPwIfLegacy(pw, globalMatchData);
+      window.location.href = 'admin.html?gameId=' + GAME_ID;
+    } else {
+      showToast('❌ 권한이 없습니다.', 'error');
+    }
+  }
+  
+  document.querySelectorAll('.chart-modal-bg, .modal-bg').forEach(function(el){ el.addEventListener('click', function(e){ if(e.target===el){ el.classList.remove('show'); } }); });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-bg.show, .chart-modal-bg.show').forEach(function(el) { el.classList.remove('show'); });
+      const popupOverlay = document.getElementById('popupOverlay');
+      if (popupOverlay && popupOverlay.style.display !== 'none') { dismissPopup(); }
+    }
+    if (e.key === 'Enter') {
+      const popupOverlay = document.getElementById('popupOverlay');
+      if (popupOverlay && popupOverlay.style.display !== 'none') { dismissPopup(); }
+    }
+  });
+</script>
+<!--
+════════════════════════════════════════════════════════════════════
+🎨 FCMON 공용 다이얼로그 라이브러리 v1.0
+각 페이지에 통째로 복사해서 넣으면 됩니다.
+════════════════════════════════════════════════════════════════════
+
+제공 API:
+  showToast(message, type)     - type: 'info' | 'success' | 'warning' | 'error'
+  await showConfirm(message, { title, confirmText, cancelText, danger })
+  await showPrompt(message, { title, type, placeholder, maxlength, defaultValue })
+
+사용 예:
+  showToast('저장되었습니다', 'success');
+  if (await showConfirm('삭제할까요?', { danger: true })) { ... }
+  const pw = await showPrompt('비밀번호:', { type: 'password', maxlength: 4 });
+-->
+
+<!-- ═══════════════════════ CSS ═══════════════════════ -->
+<style>
+  /* 토스트 시스템 - 화면 상단에 순차 표시 */
+  #fcm-toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+    width: 100%;
+    max-width: 400px;
+    padding: 0 16px;
+  }
+  .fcm-toast {
+    background: var(--bg2, #0f1510);
+    color: var(--text, #E8F5E9);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-left: 3px solid var(--green, #00E676);
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: fcm-toast-in 0.25s ease;
+    pointer-events: auto;
+    max-width: 100%;
+    word-break: keep-all;
+    line-height: 1.5;
+  }
+  .fcm-toast.is-leaving { animation: fcm-toast-out 0.2s ease forwards; }
+  .fcm-toast-success { border-left-color: var(--green, #00E676); }
+  .fcm-toast-warning { border-left-color: #FFCA28; }
+  .fcm-toast-error   { border-left-color: #FF4757; }
+  .fcm-toast-info    { border-left-color: #40C4FF; }
+  @keyframes fcm-toast-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fcm-toast-out {
+    to { opacity: 0; transform: translateY(-10px); }
+  }
+
+  /* 다이얼로그 (confirm/prompt 공용) - 화면 중앙 */
+  #fcm-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    backdrop-filter: blur(6px);
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #fcm-dialog-overlay.is-open { display: flex; }
+  .fcm-dialog-box {
+    background: var(--bg2, #0f1510);
+    width: 100%;
+    max-width: 360px;
+    border-radius: 22px;
+    padding: 26px 22px 22px;
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    animation: fcm-dialog-in 0.25s cubic-bezier(0.32, 1, 0.23, 1);
+  }
+  @keyframes fcm-dialog-in {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .fcm-dialog-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--green, #00E676);
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+  }
+  .fcm-dialog-title.is-danger { color: #FF4757; }
+  .fcm-dialog-message {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text, #E8F5E9);
+    white-space: pre-wrap;
+    word-break: keep-all;
+    margin-bottom: 18px;
+  }
+  .fcm-dialog-input {
+    width: 100%;
+    background: var(--bg3, #161d17);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-radius: 11px;
+    padding: 12px 15px;
+    color: var(--text, #E8F5E9);
+    font-family: inherit;
+    font-size: 16px;
+    outline: none;
+    -webkit-appearance: none;
+    margin-bottom: 18px;
+    transition: border-color 0.2s;
+  }
+  .fcm-dialog-input:focus { border-color: var(--green, #00E676); }
+  .fcm-dialog-input::placeholder { color: var(--muted, #5a6e5c); }
+  .fcm-dialog-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .fcm-dialog-btn {
+    flex: 1;
+    height: 46px;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    -webkit-appearance: none;
+    transition: 0.15s;
+  }
+  .fcm-dialog-btn:active { transform: scale(0.97); }
+  .fcm-dialog-btn-cancel {
+    background: transparent;
+    color: var(--muted2, #8a9e8c);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+  }
+  .fcm-dialog-btn-cancel:hover { background: var(--bg3, #161d17); }
+  .fcm-dialog-btn-confirm {
+    background: var(--green, #00E676);
+    color: #000;
+  }
+  .fcm-dialog-btn-confirm.is-danger {
+    background: #FF4757;
+    color: #fff;
+  }
+</style>
+
+<!-- ═══════════════════════ JS ═══════════════════════ -->
+<script>
+(function(){
+  /* 🔔 토스트 */
+  function ensureToastContainer() {
+    let c = document.getElementById('fcm-toast-container');
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'fcm-toast-container';
+      document.body.appendChild(c);
+    }
+    return c;
+  }
+  
+  window.showToast = function(message, type) {
+    const container = ensureToastContainer();
+    const el = document.createElement('div');
+    el.className = 'fcm-toast fcm-toast-' + (type || 'info');
+    el.textContent = message;
+    container.appendChild(el);
+    
+    // 자동 제거
+    const duration = (type === 'error' || type === 'warning') ? 3800 : 2800;
+    setTimeout(function(){
+      el.classList.add('is-leaving');
+      setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+    }, duration);
+  };
+  
+  /* 🔧 다이얼로그 공통 DOM 구성 */
+  function ensureDialogOverlay() {
+    let ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'fcm-dialog-overlay';
+      ov.innerHTML = '<div class="fcm-dialog-box">' +
+        '<div class="fcm-dialog-title" id="fcm-dialog-title"></div>' +
+        '<div class="fcm-dialog-message" id="fcm-dialog-message"></div>' +
+        '<input type="text" class="fcm-dialog-input" id="fcm-dialog-input" style="display:none;">' +
+        '<div class="fcm-dialog-actions">' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-cancel" id="fcm-dialog-cancel"></button>' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-confirm" id="fcm-dialog-confirm"></button>' +
+        '</div></div>';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+  
+  let dialogResolver = null;
+  
+  function closeDialog(result) {
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (ov) ov.classList.remove('is-open');
+    if (dialogResolver) {
+      const r = dialogResolver;
+      dialogResolver = null;
+      r(result);
+    }
+  }
+  
+  /* ✅ showConfirm - Promise<boolean> */
+  window.showConfirm = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '확인';
+    titleEl.classList.toggle('is-danger', !!opts.danger);
+    messageEl.textContent = message;
+    messageEl.style.display = '';
+    inputEl.style.display = 'none';
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.toggle('is-danger', !!opts.danger);
+    
+    cancelBtn.onclick = function(){ closeDialog(false); };
+    confirmBtn.onclick = function(){ closeDialog(true); };
+    
+    ov.classList.add('is-open');
+    confirmBtn.focus();
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* 📝 showPrompt - Promise<string|null> */
+  window.showPrompt = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '입력';
+    titleEl.classList.remove('is-danger');
+    messageEl.textContent = message;
+    messageEl.style.display = message ? '' : 'none';
+    
+    inputEl.style.display = '';
+    inputEl.type = opts.type || 'text';
+    inputEl.placeholder = opts.placeholder || '';
+    inputEl.value = opts.defaultValue || '';
+    if (opts.maxlength) inputEl.maxLength = opts.maxlength;
+    else inputEl.removeAttribute('maxlength');
+    if (opts.type === 'number' || (opts.maxlength === 4 && opts.type === 'password')) {
+      inputEl.inputMode = 'numeric';
+      inputEl.pattern = '[0-9]*';
+    } else {
+      inputEl.removeAttribute('inputmode');
+      inputEl.removeAttribute('pattern');
+    }
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.remove('is-danger');
+    
+    cancelBtn.onclick = function(){ closeDialog(null); };
+    confirmBtn.onclick = function(){ closeDialog(inputEl.value); };
+    inputEl.onkeydown = function(e){ 
+      if (e.key === 'Enter') { e.preventDefault(); closeDialog(inputEl.value); }
+    };
+    
+    ov.classList.add('is-open');
+    setTimeout(function(){ inputEl.focus(); }, 50);
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* ⌨️ 전역 키보드 - ESC로 다이얼로그 취소, 배경 클릭으로 취소 */
+  document.addEventListener('keydown', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.key === 'Escape') { closeDialog(null); }
+  });
+  
+  document.addEventListener('click', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.target === ov) { closeDialog(null); }
+  }, true);
+})();
+</script>
+
+<!--
+════════════════════════════════════════════════════════════════════
+🔄 FCMON Undo 토스트 확장 v1.0
+_dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
+
+사용 예:
+  showUndoToast('매치가 삭제되었습니다', () => {
+    // 되돌리기 콜백 - 여기서 복원 로직 실행
+    restoreMatch(savedData);
+  }, {
+    duration: 5000,        // 표시 시간 (ms)
+    label: '되돌리기'      // 버튼 텍스트
+  });
+════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* Undo 토스트 전용 스타일 */
+  .fcm-undo-toast {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 14px 14px 18px !important;
+    min-width: 280px;
+    max-width: 360px;
+  }
+  .fcm-undo-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text, #E8F5E9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fcm-undo-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--green, #00E676);
+    color: var(--green, #00E676);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.15s;
+    letter-spacing: -0.3px;
+  }
+  .fcm-undo-btn:hover, .fcm-undo-btn:active { 
+    background: var(--green, #00E676); 
+    color: #000;
+  }
+  /* 진행 상태 바 - 남은 시간 시각화 */
+  .fcm-undo-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--green, #00E676);
+    width: 100%;
+    transform-origin: left center;
+    animation: fcm-undo-countdown linear forwards;
+  }
+  @keyframes fcm-undo-countdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+  }
+  .fcm-undo-toast { position: relative; overflow: hidden; }
+</style>
+
+<script>
+(function(){
+  /* 🔄 showUndoToast - 실행 취소 가능한 토스트 */
+  /* 반환값: { commit: () => void, cancel: () => void } */
+  /*   commit(): 즉시 완료(토스트 닫고 완료 콜백 실행 안 함) */
+  /*   cancel(): 되돌리기 동작 (토스트 닫고 onUndo 콜백 실행) */
+  
+  window.showUndoToast = function(message, onUndo, opts) {
+    opts = opts || {};
+    const duration = opts.duration || 5000;
+    const label = opts.label || '되돌리기';
+    
+    // 컨테이너 확보 (showToast와 공유)
+    let container = document.getElementById('fcm-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'fcm-toast-container';
+      document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'fcm-toast fcm-toast-success fcm-undo-toast';
+    
+    const msgEl = document.createElement('div');
+    msgEl.className = 'fcm-undo-message';
+    msgEl.textContent = message;
+    
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fcm-undo-btn';
+    btn.textContent = label;
+    
+    const progress = document.createElement('div');
+    progress.className = 'fcm-undo-progress';
+    progress.style.animationDuration = duration + 'ms';
+    
+    toast.appendChild(msgEl);
+    toast.appendChild(btn);
+    toast.appendChild(progress);
+    container.appendChild(toast);
+    
+    let settled = false;
+    let timeoutId = null;
+    
+    function dismiss() {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+      toast.classList.add('is-leaving');
+      setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
+    }
+    
+    btn.onclick = function() {
+      if (settled) return;
+      try { if (onUndo) onUndo(); } 
+      catch(e) { console.error('[Undo] 되돌리기 오류:', e); }
+      dismiss();
+    };
+    
+    timeoutId = setTimeout(function() {
+      // 자동 소멸 - 되돌리기 호출 없이 그냥 토스트 닫힘
+      dismiss();
+    }, duration);
+    
+    return {
+      commit: function() { dismiss(); },
+      cancel: function() { btn.click(); }
+    };
+  };
+})();
+</script>
+
+</body>
+</html>

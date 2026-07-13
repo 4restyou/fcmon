@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <link rel="icon" type="image/png" href="./sublogo2.png">
+  <link rel="shortcut icon" href="./sublogo2.png">
+
+  <link rel="apple-touch-icon" href="./sublogo2.png">
+  <meta name="apple-mobile-web-app-title" content="FCMON">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FCMON - 출석률 통계</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./common.css">
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <style>
+    /* 페이지 전용 스타일 (공통 토큰/리셋/접근성은 common.css 참조) */
+    .container{max-width:480px;margin:0 auto;padding:0 16px 100px;}
+    
+    .header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px}
+    .top-logo-img { height: 35px; width: auto; object-fit: contain; }
+    .back-btn{width:40px;height:40px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--text)}
+
+    .summary-card { background: linear-gradient(135deg, var(--bg3), var(--bg2)); border: 1px solid var(--green); border-radius: 16px; padding: 20px; text-align: center; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(0,230,118,0.1); }
+    .summary-title { font-size: 13px; color: var(--green); font-weight: 700; margin-bottom: 8px; letter-spacing: 1px; }
+    .summary-val { font-size: 32px; font-family: 'Bebas Neue', sans-serif; font-weight: 900; color: #fff; letter-spacing: 2px; }
+
+    .section-title { font-size: 14px; font-weight: 900; color: var(--muted); margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+    .att-list { display: flex; flex-direction: column; gap: 10px; }
+    .att-card { background: var(--bg3); border-radius: 16px; padding: 16px; display: flex; align-items: center; border: 1px solid var(--border); transition: transform 0.2s; }
+    .att-card:active { transform: scale(0.98); border-color: rgba(0,230,118,0.3); }
+    
+    .att-num { width: 30px; font-size: 16px; font-weight: 900; color: var(--muted); text-align: center; margin-right: 10px; }
+    .att-num.top1 { color: var(--gold); font-size: 22px; }
+    .att-num.top2 { color: #C0C0C0; font-size: 20px; }
+    .att-num.top3 { color: #CD7F32; font-size: 18px; }
+    
+    .att-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--bg); overflow: hidden; margin-right: 14px; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 1px solid rgba(255,255,255,0.1);}
+    .att-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    
+    .att-info { flex: 1; margin-right: 12px; }
+    .att-name { font-size: 15px; font-weight: 900; margin-bottom: 6px; color: var(--text); }
+    .att-bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+    .att-bar-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+    
+    .att-stats { text-align: right; min-width: 50px; }
+    .att-percent { font-size: 18px; font-family: 'Bebas Neue', sans-serif; font-weight: 900; color: var(--green); letter-spacing: 1px; }
+    .att-count { font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 2px; }
+
+    .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, var(--card) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 16px; margin-bottom: 12px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .loading { text-align: center; color: var(--muted); padding: 40px 0; font-size: 14px; }
+
+    #popupOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+    .popup-box{background:var(--bg2);width:90%;max-width:400px;border-radius:22px;padding:28px 24px;border:1px solid rgba(0,230,118,0.3);text-align:center;animation:popupIn .3s ease}
+    @keyframes popupIn{from{opacity:0;transform:scale(.92) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+    
+    .footer-info { text-align: center; padding: 20px 0; font-size: 0.75rem; color: #a0a0a0; margin-top: 40px; border-top: 1px solid var(--border); }
+    .footer-info a { color: var(--green); text-decoration: none; font-weight: bold; }
+      </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img" loading="eager">
+    <div class="back-btn" onclick="goBack()">←</div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-title">🔥 누적 진행 매치</div>
+    <div class="summary-val" id="totalMatchesCount">-</div>
+  </div>
+
+  <div class="section-title">전체 선수 출석률 순위</div>
+
+  <div id="attSkeleton">
+    <div class="skeleton" style="height:78px;"></div>
+    <div class="skeleton" style="height:78px;"></div>
+    <div class="skeleton" style="height:78px;"></div>
+    <div class="skeleton" style="height:78px;"></div>
+  </div>
+  
+  <div class="att-list" id="attList"></div>
+</div>
+
+<div id="popupOverlay">
+  <div class="popup-box">
+    <div style="font-size:28px; margin-bottom:12px;">📢</div>
+    <div style="font-size:16px; font-weight:900; color:var(--green); margin-bottom:16px;">공지사항</div>
+    <div id="popupContent" style="font-size:14px; color:var(--text); line-height:1.8; white-space:pre-wrap; margin-bottom:8px; max-height:300px; overflow-y:auto; text-align:left; padding:16px; background:var(--bg3); border-radius:12px; border:1px solid var(--border);"></div>
+    <div id="popupExpire" style="font-size:11px; color:var(--muted); margin:12px 0 20px;"></div>
+    <button onclick="dismissPopup()" style="width:100%; height:50px; background:var(--green); color:#000; border:none; border-radius:12px; font-weight:900; font-size:15px; cursor:pointer;">✅ 확인했습니다</button>
+  </div>
+</div>
+
+<div class="footer-info">
+  <div style="margin-bottom:4px;">4rest | 박순렬 | 010-4931-3298</div>
+  <div>광주광역시 동구 충장로46번길 8. 층</div>
+  <div class="mt-1"><a href="http://www.4rest.net" target="_blank">www.4rest.net</a></div>
+</div>
+
+<script>
+  // ★ Firebase 초기화
+  const firebaseConfig = {
+    apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU",
+    authDomain: "fcmon-96ec1.firebaseapp.com",
+    projectId: "fcmon-96ec1",
+    storageBucket: "fcmon-96ec1.firebasestorage.app",
+    messagingSenderId: "912620232254",
+    appId: "1:912620232254:web:b86a27fa9f733f2c137b6f"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  /* ═══════════════════════ 🛡 XSS 방어 헬퍼 ═══════════════════════════════════ */
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function safePhotoUrl(url) {
+    if (!url) return '';
+    const s = String(url).trim();
+    if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(s)) return s;
+    if (/^https?:\/\//i.test(s)) return s;
+    return '';
+  }
+
+  function isActiveEntry(entry) {
+    return !!entry && entry.active !== false && !entry.canceledAt;
+  }
+  /* ═════════════════════════════════════════════════════════════════════════════ */
+
+  window.onload = function() {
+    loadSettingsRealtime();
+    calculateAttendance();
+  };
+
+  /* ── 팝업 공지 연동 ── */
+  function loadSettingsRealtime() {
+    db.collection("settings").doc("system").onSnapshot((doc) => {
+      if (doc.exists && doc.data().popup && doc.data().popup.text) {
+        const popup = doc.data().popup;
+        const now = new Date();
+        const exp = popup.expireDate ? new Date(popup.expireDate + 'T23:59:59') : null;
+        if (!exp || now <= exp) {
+          const key = 'fcmon_popup_' + (popup.createdAt || '').replace(/[^a-zA-Z0-9]/g, '');
+          if (localStorage.getItem(key) !== 'dismissed') {
+            document.getElementById('popupContent').textContent = popup.text;
+            document.getElementById('popupExpire').textContent = popup.expireDate ? '게시 기한: ' + popup.expireDate + '까지' : '';
+            document.getElementById('popupOverlay').style.display = 'flex';
+            window._popupKey = key;
+          }
+        }
+      }
+    });
+  }
+  function dismissPopup(){ if(window._popupKey) localStorage.setItem(window._popupKey, 'dismissed'); document.getElementById('popupOverlay').style.display='none'; }
+
+  /* ── 출석률 계산 로직 (클라이언트 사이드 조인) ── */
+  function calculateAttendance() {
+    // 1. 종료된 모든 매치 가져오기
+    db.collection("matches").where("status", "==", "매치종료").get().then(snap => {
+      const matchDocs = [];
+      snap.forEach(doc => { if (!doc.data().deletedAt) matchDocs.push(doc); });
+      const totalMatches = matchDocs.length;
+      document.getElementById('totalMatchesCount').innerText = totalMatches + ' MATCHES';
+      
+      if (totalMatches === 0) {
+        document.getElementById('attSkeleton').style.display = 'none';
+        document.getElementById('attList').innerHTML = '<div class="loading">아직 종료된 매치가 없습니다.</div>';
+        return;
+      }
+      
+      let attMap = {};
+      let promises = [];
+      
+      // 2. 각 매치의 참가자(entries) 명단 카운팅
+      matchDocs.forEach(doc => {
+        promises.push(
+          doc.ref.collection("entries").get().then(eSnap => {
+            eSnap.forEach(eDoc => {
+              const entry = eDoc.data();
+              if (!isActiveEntry(entry)) return;
+              const uid = entry.userId;
+              // 게스트(GUEST-)는 통계에서 제외
+              if (uid && !uid.startsWith('GUEST')) {
+                 attMap[uid] = (attMap[uid] || 0) + 1;
+              }
+            });
+          })
+        );
+      });
+      
+      // 3. 모든 카운팅이 끝나면 유저 정보와 결합
+      Promise.all(promises).then(() => {
+        db.collection("users").get().then(uSnap => {
+          let users = [];
+          uSnap.forEach(uDoc => {
+            let u = uDoc.data();
+            // 탈퇴 회원 제외
+            if (u.status === 'retired') return;
+            u.id = uDoc.id;
+            u.attCount = attMap[u.id] || 0;
+            // 총 경기 수가 0이 아닐 때만 비율 계산
+            u.attRate = totalMatches > 0 ? Math.round((u.attCount / totalMatches) * 100) : 0;
+            users.push(u);
+          });
+          
+          // 출석률(내림차순) -> 출석횟수(내림차순) 정렬
+          users.sort((a,b) => {
+            if (b.attRate !== a.attRate) return b.attRate - a.attRate;
+            return b.attCount - a.attCount;
+          });
+          
+          renderAttendance(users, totalMatches);
+        });
+      });
+    }).catch(err => {
+      document.getElementById('attSkeleton').style.display = 'none';
+      document.getElementById('attList').innerHTML = '<div class="loading">데이터 로딩 오류: ' + err.message + '</div>';
+    });
+  }
+
+  function renderAttendance(users, totalMatches) {
+    document.getElementById('attSkeleton').style.display = 'none';
+    
+    if (users.length === 0) {
+      document.getElementById('attList').innerHTML = '<div class="loading">등록된 선수가 없습니다.</div>';
+      return;
+    }
+
+    let html = '';
+    users.forEach((p, idx) => {
+      const rank = idx + 1;
+      const rankClass = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+      const safeUrl = safePhotoUrl(p.photoUrl);
+      const avatar = safeUrl ? '<img src="'+escapeHtml(safeUrl)+'" loading="lazy">' : '<img src="./sublogo2.png" style="padding:6px; object-fit:contain;">';
+      
+      // 출석률에 따른 게이지 색상 (80%이상 초록, 50%이상 노랑, 미만 빨강)
+      let barColor = 'var(--green)';
+      if (p.attRate < 50) barColor = '#FF4757';
+      else if (p.attRate < 80) barColor = '#FFCA28';
+
+      const safeName = escapeHtml(p.name);
+      const safeRate = escapeHtml(p.attRate);
+      const safeCount = escapeHtml(p.attCount);
+
+      html += `
+        <div class="att-card">
+          <div class="att-num ${rankClass}">${rank}</div>
+          <div class="att-avatar">${avatar}</div>
+          <div class="att-info">
+             <div class="att-name">${safeName}</div>
+             <div class="att-bar-bg"><div class="att-bar-fill" style="width:0%; background:${barColor};" data-width="${safeRate}%"></div></div>
+          </div>
+          <div class="att-stats">
+             <div class="att-percent" style="color:${barColor}">${safeRate}%</div>
+             <div class="att-count">${safeCount} / ${totalMatches}</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    document.getElementById('attList').innerHTML = html;
+
+    // 프로그레스 바 애니메이션 효과 적용 (살짝 딜레이 후 넓어짐)
+    setTimeout(() => {
+      document.querySelectorAll('.att-bar-fill').forEach(bar => {
+        bar.style.width = bar.getAttribute('data-width');
+      });
+    }, 100);
+  }
+
+  function goBack() { window.location.href = 'index.html'; }
+</script>
+<!--
+════════════════════════════════════════════════════════════════════
+🎨 FCMON 공용 다이얼로그 라이브러리 v1.0
+각 페이지에 통째로 복사해서 넣으면 됩니다.
+════════════════════════════════════════════════════════════════════
+
+제공 API:
+  showToast(message, type)     - type: 'info' | 'success' | 'warning' | 'error'
+  await showConfirm(message, { title, confirmText, cancelText, danger })
+  await showPrompt(message, { title, type, placeholder, maxlength, defaultValue })
+
+사용 예:
+  showToast('저장되었습니다', 'success');
+  if (await showConfirm('삭제할까요?', { danger: true })) { ... }
+  const pw = await showPrompt('비밀번호:', { type: 'password', maxlength: 4 });
+-->
+
+<!-- ═══════════════════════ CSS ═══════════════════════ -->
+<style>
+  /* 토스트 시스템 - 화면 상단에 순차 표시 */
+  #fcm-toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+    width: 100%;
+    max-width: 400px;
+    padding: 0 16px;
+  }
+  .fcm-toast {
+    background: var(--bg2, #0f1510);
+    color: var(--text, #E8F5E9);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-left: 3px solid var(--green, #00E676);
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: fcm-toast-in 0.25s ease;
+    pointer-events: auto;
+    max-width: 100%;
+    word-break: keep-all;
+    line-height: 1.5;
+  }
+  .fcm-toast.is-leaving { animation: fcm-toast-out 0.2s ease forwards; }
+  .fcm-toast-success { border-left-color: var(--green, #00E676); }
+  .fcm-toast-warning { border-left-color: #FFCA28; }
+  .fcm-toast-error   { border-left-color: #FF4757; }
+  .fcm-toast-info    { border-left-color: #40C4FF; }
+  @keyframes fcm-toast-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fcm-toast-out {
+    to { opacity: 0; transform: translateY(-10px); }
+  }
+
+  /* 다이얼로그 (confirm/prompt 공용) - 화면 중앙 */
+  #fcm-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    backdrop-filter: blur(6px);
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #fcm-dialog-overlay.is-open { display: flex; }
+  .fcm-dialog-box {
+    background: var(--bg2, #0f1510);
+    width: 100%;
+    max-width: 360px;
+    border-radius: 22px;
+    padding: 26px 22px 22px;
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    animation: fcm-dialog-in 0.25s cubic-bezier(0.32, 1, 0.23, 1);
+  }
+  @keyframes fcm-dialog-in {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .fcm-dialog-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--green, #00E676);
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+  }
+  .fcm-dialog-title.is-danger { color: #FF4757; }
+  .fcm-dialog-message {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text, #E8F5E9);
+    white-space: pre-wrap;
+    word-break: keep-all;
+    margin-bottom: 18px;
+  }
+  .fcm-dialog-input {
+    width: 100%;
+    background: var(--bg3, #161d17);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-radius: 11px;
+    padding: 12px 15px;
+    color: var(--text, #E8F5E9);
+    font-family: inherit;
+    font-size: 16px;
+    outline: none;
+    -webkit-appearance: none;
+    margin-bottom: 18px;
+    transition: border-color 0.2s;
+  }
+  .fcm-dialog-input:focus { border-color: var(--green, #00E676); }
+  .fcm-dialog-input::placeholder { color: var(--muted, #5a6e5c); }
+  .fcm-dialog-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .fcm-dialog-btn {
+    flex: 1;
+    height: 46px;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    -webkit-appearance: none;
+    transition: 0.15s;
+  }
+  .fcm-dialog-btn:active { transform: scale(0.97); }
+  .fcm-dialog-btn-cancel {
+    background: transparent;
+    color: var(--muted2, #8a9e8c);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+  }
+  .fcm-dialog-btn-cancel:hover { background: var(--bg3, #161d17); }
+  .fcm-dialog-btn-confirm {
+    background: var(--green, #00E676);
+    color: #000;
+  }
+  .fcm-dialog-btn-confirm.is-danger {
+    background: #FF4757;
+    color: #fff;
+  }
+</style>
+
+<!-- ═══════════════════════ JS ═══════════════════════ -->
+<script>
+(function(){
+  /* 🔔 토스트 */
+  function ensureToastContainer() {
+    let c = document.getElementById('fcm-toast-container');
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'fcm-toast-container';
+      document.body.appendChild(c);
+    }
+    return c;
+  }
+  
+  window.showToast = function(message, type) {
+    const container = ensureToastContainer();
+    const el = document.createElement('div');
+    el.className = 'fcm-toast fcm-toast-' + (type || 'info');
+    el.textContent = message;
+    container.appendChild(el);
+    
+    // 자동 제거
+    const duration = (type === 'error' || type === 'warning') ? 3800 : 2800;
+    setTimeout(function(){
+      el.classList.add('is-leaving');
+      setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+    }, duration);
+  };
+  
+  /* 🔧 다이얼로그 공통 DOM 구성 */
+  function ensureDialogOverlay() {
+    let ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'fcm-dialog-overlay';
+      ov.innerHTML = '<div class="fcm-dialog-box">' +
+        '<div class="fcm-dialog-title" id="fcm-dialog-title"></div>' +
+        '<div class="fcm-dialog-message" id="fcm-dialog-message"></div>' +
+        '<input type="text" class="fcm-dialog-input" id="fcm-dialog-input" style="display:none;">' +
+        '<div class="fcm-dialog-actions">' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-cancel" id="fcm-dialog-cancel"></button>' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-confirm" id="fcm-dialog-confirm"></button>' +
+        '</div></div>';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+  
+  let dialogResolver = null;
+  
+  function closeDialog(result) {
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (ov) ov.classList.remove('is-open');
+    if (dialogResolver) {
+      const r = dialogResolver;
+      dialogResolver = null;
+      r(result);
+    }
+  }
+  
+  /* ✅ showConfirm - Promise<boolean> */
+  window.showConfirm = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '확인';
+    titleEl.classList.toggle('is-danger', !!opts.danger);
+    messageEl.textContent = message;
+    messageEl.style.display = '';
+    inputEl.style.display = 'none';
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.toggle('is-danger', !!opts.danger);
+    
+    cancelBtn.onclick = function(){ closeDialog(false); };
+    confirmBtn.onclick = function(){ closeDialog(true); };
+    
+    ov.classList.add('is-open');
+    confirmBtn.focus();
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* 📝 showPrompt - Promise<string|null> */
+  window.showPrompt = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '입력';
+    titleEl.classList.remove('is-danger');
+    messageEl.textContent = message;
+    messageEl.style.display = message ? '' : 'none';
+    
+    inputEl.style.display = '';
+    inputEl.type = opts.type || 'text';
+    inputEl.placeholder = opts.placeholder || '';
+    inputEl.value = opts.defaultValue || '';
+    if (opts.maxlength) inputEl.maxLength = opts.maxlength;
+    else inputEl.removeAttribute('maxlength');
+    if (opts.type === 'number' || (opts.maxlength === 4 && opts.type === 'password')) {
+      inputEl.inputMode = 'numeric';
+      inputEl.pattern = '[0-9]*';
+    } else {
+      inputEl.removeAttribute('inputmode');
+      inputEl.removeAttribute('pattern');
+    }
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.remove('is-danger');
+    
+    cancelBtn.onclick = function(){ closeDialog(null); };
+    confirmBtn.onclick = function(){ closeDialog(inputEl.value); };
+    inputEl.onkeydown = function(e){ 
+      if (e.key === 'Enter') { e.preventDefault(); closeDialog(inputEl.value); }
+    };
+    
+    ov.classList.add('is-open');
+    setTimeout(function(){ inputEl.focus(); }, 50);
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* ⌨️ 전역 키보드 - ESC로 다이얼로그 취소, 배경 클릭으로 취소 */
+  document.addEventListener('keydown', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.key === 'Escape') { closeDialog(null); }
+  });
+  
+  document.addEventListener('click', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.target === ov) { closeDialog(null); }
+  }, true);
+})();
+</script>
+
+<!--
+════════════════════════════════════════════════════════════════════
+🔄 FCMON Undo 토스트 확장 v1.0
+_dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
+
+사용 예:
+  showUndoToast('매치가 삭제되었습니다', () => {
+    // 되돌리기 콜백 - 여기서 복원 로직 실행
+    restoreMatch(savedData);
+  }, {
+    duration: 5000,        // 표시 시간 (ms)
+    label: '되돌리기'      // 버튼 텍스트
+  });
+════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* Undo 토스트 전용 스타일 */
+  .fcm-undo-toast {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 14px 14px 18px !important;
+    min-width: 280px;
+    max-width: 360px;
+  }
+  .fcm-undo-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text, #E8F5E9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fcm-undo-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--green, #00E676);
+    color: var(--green, #00E676);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.15s;
+    letter-spacing: -0.3px;
+  }
+  .fcm-undo-btn:hover, .fcm-undo-btn:active { 
+    background: var(--green, #00E676); 
+    color: #000;
+  }
+  /* 진행 상태 바 - 남은 시간 시각화 */
+  .fcm-undo-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--green, #00E676);
+    width: 100%;
+    transform-origin: left center;
+    animation: fcm-undo-countdown linear forwards;
+  }
+  @keyframes fcm-undo-countdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+  }
+  .fcm-undo-toast { position: relative; overflow: hidden; }
+
+    /* ─── FAB 좌측 하단 고정 + 세로 메뉴 ─── */
+    .fab-wrapper {
+      position: fixed; 
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      left: 16px;
+      z-index: 100;
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      pointer-events: none;
+    }
+    @media (min-width: 512px) {
+      .fab-wrapper {
+        left: 50%;
+        margin-left: calc(-240px + 16px);
+      }
+    }
+    .fab-toggle-btn {
+      pointer-events: auto; 
+      width: 56px; height: 56px; 
+      border-radius: 50%; 
+      background: linear-gradient(135deg, #00E676, #00C853);
+      color: #000; border: none; cursor: pointer; 
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,230,118,0.4); 
+      transition: all 0.3s cubic-bezier(0.32, 1, 0.23, 1); 
+      outline: none;
+      order: 2;
+    }
+    .fab-wrapper.open .fab-toggle-btn { 
+      transform: rotate(135deg); 
+      background: #333; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+      color: #fff; 
+    }
+    .fab-expand-menu {
+      pointer-events: none; 
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      opacity: 0; 
+      transform: translateY(12px) scale(0.95); 
+      transition: all 0.28s cubic-bezier(0.32, 1, 0.23, 1);
+      order: 1;
+    }
+    .fab-wrapper.open .fab-expand-menu { 
+      opacity: 1; 
+      transform: translateY(0) scale(1); 
+      pointer-events: auto;
+    }
+    .fab-btn-primary, 
+    .fab-btn-secondary { 
+      min-width: 160px;
+      height: 46px;
+      padding: 0 22px;
+      border-radius: 23px;
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap; 
+      letter-spacing: -0.3px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      -webkit-appearance: none;
+      transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+      font-family: inherit;
+    }
+    .fab-btn-primary { 
+      background: linear-gradient(135deg, #00E676, #00C853); 
+      color: #000; 
+      font-size: 14px; 
+      font-weight: 900;
+      box-shadow: 0 4px 14px rgba(0,230,118,0.35); 
+    }
+    .fab-btn-primary:active { transform: scale(0.96); }
+    .fab-btn-secondary { 
+      background: rgba(30, 35, 32, 0.85);
+      color: #E8F5E9; 
+      border: 1px solid rgba(255,255,255,0.1); 
+      backdrop-filter: blur(12px); 
+      -webkit-backdrop-filter: blur(12px); 
+      font-size: 13px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .fab-btn-secondary:active { 
+      transform: scale(0.96); 
+      background: rgba(45, 50, 47, 0.95); 
+    }
+
+  </style>
+
+<script>
+(function(){
+  /* 🔄 showUndoToast - 실행 취소 가능한 토스트 */
+  /* 반환값: { commit: () => void, cancel: () => void } */
+  /*   commit(): 즉시 완료(토스트 닫고 완료 콜백 실행 안 함) */
+  /*   cancel(): 되돌리기 동작 (토스트 닫고 onUndo 콜백 실행) */
+  
+  window.showUndoToast = function(message, onUndo, opts) {
+    opts = opts || {};
+    const duration = opts.duration || 5000;
+    const label = opts.label || '되돌리기';
+    
+    // 컨테이너 확보 (showToast와 공유)
+    let container = document.getElementById('fcm-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'fcm-toast-container';
+      document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'fcm-toast fcm-toast-success fcm-undo-toast';
+    
+    const msgEl = document.createElement('div');
+    msgEl.className = 'fcm-undo-message';
+    msgEl.textContent = message;
+    
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fcm-undo-btn';
+    btn.textContent = label;
+    
+    const progress = document.createElement('div');
+    progress.className = 'fcm-undo-progress';
+    progress.style.animationDuration = duration + 'ms';
+    
+    toast.appendChild(msgEl);
+    toast.appendChild(btn);
+    toast.appendChild(progress);
+    container.appendChild(toast);
+    
+    let settled = false;
+    let timeoutId = null;
+    
+    function dismiss() {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+      toast.classList.add('is-leaving');
+      setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
+    }
+    
+    btn.onclick = function() {
+      if (settled) return;
+      try { if (onUndo) onUndo(); } 
+      catch(e) { console.error('[Undo] 되돌리기 오류:', e); }
+      dismiss();
+    };
+    
+    timeoutId = setTimeout(function() {
+      // 자동 소멸 - 되돌리기 호출 없이 그냥 토스트 닫힘
+      dismiss();
+    }, duration);
+    
+    return {
+      commit: function() { dismiss(); },
+      cancel: function() { btn.click(); }
+    };
+  };
+})();
+</script>
+
+<!-- ─── FAB 플로팅 메뉴 ─── -->
+<div class="fab-wrapper" id="fabWrapper">
+  <button class="fab-toggle-btn" onclick="toggleFab(event)" aria-label="메뉴">
+    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+  <div class="fab-expand-menu">
+    <button class="fab-btn-primary" onclick="location.href='index.html'">홈으로</button>
+    <button class="fab-btn-secondary" onclick="location.href='profile.html'">프로필</button>
+    <button class="fab-btn-secondary" onclick="location.href='members.html'">회원 명부</button>
+    <button class="fab-btn-secondary" onclick="location.href='ranking.html'">랭킹</button>
+  </div>
+</div>
+
+
+<script>
+  // FAB 토글 (공통)
+  function toggleFab(e) { 
+    if(e) e.stopPropagation(); 
+    document.getElementById('fabWrapper').classList.toggle('open'); 
+  }
+  document.addEventListener('click', function(event) {
+    const fab = document.getElementById('fabWrapper');
+    if (fab && fab.classList.contains('open') && !fab.contains(event.target)) {
+      fab.classList.remove('open');
+    }
+  });
+</script>
+
+</body>
+</html>

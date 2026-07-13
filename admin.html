@@ -1,0 +1,3344 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+  <link rel="icon" type="image/png" href="./sublogo2.png">
+  <link rel="shortcut icon" href="./sublogo2.png">
+
+  <link rel="apple-touch-icon" href="./sublogo2.png">
+  <meta name="apple-mobile-web-app-title" content="FCMON">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FCMON - 매니저 관리자</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="./common.css">
+
+    <style>
+      /* admin 페이지 전용 스타일 */
+      body { padding: 16px; }
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(ellipse 60% 40% at 80% 5%, rgba(0,230,118,0.05) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+      
+      /* ═══════════════════════ 유틸리티 (Bootstrap 대체) ═══════════════════════ */
+      .d-flex { display: flex; }
+      .flex-shrink-0 { flex-shrink: 0; }
+      .flex-grow-1 { flex-grow: 1; }
+      .justify-content-between { justify-content: space-between; }
+      .justify-content-center { justify-content: center; }
+      .align-items-center { align-items: center; }
+      .align-items-start { align-items: flex-start; }
+      .w-100 { width: 100%; }
+      .text-center { text-align: center; }
+      .text-start { text-align: left; }
+      .text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .fw-bold { font-weight: 700; }
+      .fw-normal { font-weight: 400; }
+      .small { font-size: 0.85rem; }
+      
+      .mb-1 { margin-bottom: 4px; }
+      .mb-2 { margin-bottom: 8px; }
+      .mb-3 { margin-bottom: 16px; }
+      .mb-4 { margin-bottom: 24px; }
+      .mt-1 { margin-top: 4px; }
+      .mt-2 { margin-top: 8px; }
+      .mt-3 { margin-top: 16px; }
+      .mt-4 { margin-top: 24px; }
+      .me-1 { margin-right: 4px; }
+      .ms-1 { margin-left: 4px; }
+      .px-1 { padding-left: 4px; padding-right: 4px; }
+      .px-2 { padding-left: 8px; padding-right: 8px; }
+      .py-1 { padding-top: 4px; padding-bottom: 4px; }
+      .py-2 { padding-top: 8px; padding-bottom: 8px; }
+      .py-3 { padding-top: 16px; padding-bottom: 16px; }
+      .pt-2 { padding-top: 8px; }
+      .pt-3 { padding-top: 16px; }
+      .pb-2 { padding-bottom: 8px; }
+      .pb-3 { padding-bottom: 16px; }
+
+      .text-muted { color: var(--muted2); }
+      .text-dark { color: var(--text); }
+      .text-secondary { color: var(--muted2); }
+
+      .border-bottom { border-bottom: 1px solid var(--border); }
+      .border-top { border-top: 1px solid var(--border); }
+      .rounded { border-radius: 8px; }
+      
+      /* ─── 메인 카드 ─── */
+      .admin-card { 
+        width: 100%; max-width: 900px; margin: 0 auto; 
+        background: var(--bg2); 
+        padding: 20px; border-radius: 16px; 
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        position: relative; z-index: 1;
+      }
+      
+      /* ─── [Phase 1] SVG 아이콘 공통 시스템 ─── */
+      .icon {
+        width: 16px;
+        height: 16px;
+        display: inline-block;
+        vertical-align: -3px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+      }
+      .icon-sm { width: 14px; height: 14px; }
+      .icon-lg { width: 20px; height: 20px; }
+      .icon-xl { width: 24px; height: 24px; }
+      
+      /* 섹션 제목 아이콘 (좌측 색상 포인트) */
+      .section-icon {
+        width: 18px; height: 18px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        margin-right: 6px;
+        vertical-align: -4px;
+        color: var(--green);
+        flex-shrink: 0;
+      }
+      
+      /* 버튼 내부 아이콘 (텍스트와 정렬) */
+      .btn-icon {
+        width: 16px; height: 16px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2.25;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        margin-right: 6px;
+        vertical-align: -3px;
+        flex-shrink: 0;
+      }
+      
+      /* ─── [Phase 1] 마이크로인터랙션 ─── */
+      /* 모든 버튼 기본 transition */
+      button { transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+      /* 버튼 눌림 효과 (모바일 탭 대응) */
+      button:active:not(:disabled) { transform: scale(0.97); }
+      
+      /* 카드 hover 미세 상승 (데스크탑만) */
+      @media (hover: hover) {
+        .pool-box:hover { border-color: var(--border-hover, rgba(255,255,255,0.15)); }
+        .collapsible-trigger:hover { background: rgba(255,255,255,0.04); }
+      }
+      
+      /* collapsible 아이콘 회전 애니메이션 개선 */
+      .collapsible-arrow { transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
+      
+      /* 값 카운트 업데이트 시 살짝 스케일 (JS에서 .pulse 클래스 추가 시 동작) */
+      @keyframes value-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.12); }
+      }
+      .pulse { animation: value-pulse 0.35s ease; }
+      
+      /* 섹션 제목 공통 스타일 */
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .section-header-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .section-header-sub {
+        color: var(--muted);
+        font-weight: 400;
+        font-size: 12px;
+        margin-left: 6px;
+      }
+      
+      /* ═══════════════════════════════════════════════ */
+      /* [Phase 2] 섹션 카드 시스템                      */
+      /* ═══════════════════════════════════════════════ */
+      
+      /* 섹션 카드 베이스 - 각 섹션을 독립된 카드로 구분 */
+      .section-card {
+        background: rgba(255, 255, 255, 0.018);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 14px;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      /* 좌측 컬러 액센트 바 (공통) */
+      .section-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 12px;
+        bottom: 12px;
+        width: 3px;
+        border-radius: 0 3px 3px 0;
+        background: var(--accent-color, var(--green));
+        opacity: 0.6;
+      }
+      
+      /* 섹션별 색상 아이덴티티 */
+      .section-card.accent-green  { --accent-color: var(--green); }
+      .section-card.accent-blue   { --accent-color: #40C4FF; }
+      .section-card.accent-amber  { --accent-color: var(--amber); }
+      .section-card.accent-muted  { --accent-color: rgba(255,255,255,0.15); }
+      .section-card.accent-red    { --accent-color: var(--red); }
+      
+      /* 섹션 내부 아이콘 색상도 자동 매칭 */
+      .section-card.accent-green  .section-icon { color: var(--green); }
+      .section-card.accent-blue   .section-icon { color: #40C4FF; }
+      .section-card.accent-amber  .section-icon { color: var(--amber); }
+      .section-card.accent-muted  .section-icon { color: var(--muted); }
+      .section-card.accent-red    .section-icon { color: var(--red); }
+      
+      /* 액션 툴바 카드 (버튼 그룹용) */
+      .action-toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .action-toolbar-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .action-toolbar-row.cols-3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      /* 툴바 작은 버튼 (보조 액션) */
+      .btn-toolbar {
+        padding: 11px 10px;
+        background: rgba(255,255,255,0.04);
+        color: var(--text);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      @media (hover: hover) {
+        .btn-toolbar:hover {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.15);
+        }
+      }
+      .btn-toolbar .btn-icon {
+        margin-right: 0;
+        width: 14px;
+        height: 14px;
+      }
+      
+      /* 섹션 카드 내부 헤더 스타일 (카드 내에서는 border-bottom 없애고 깔끔하게) */
+      .section-card .section-header {
+        margin-bottom: 12px;
+      }
+      
+      /* collapsible도 section-card 안에 들어갈 때 내부 padding 정리 */
+      .section-card.collapsible-card {
+        padding: 0;
+      }
+      .section-card.collapsible-card .collapsible-trigger {
+        padding: 14px 16px;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+      }
+      .section-card.collapsible-card .collapsible-trigger.is-open {
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .section-card.collapsible-card .collapsible-body > .collapsible-inner {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 12px 16px 14px 16px;
+      }
+      .section-card.collapsible-card.collapsible-section {
+        margin-bottom: 14px;
+      }
+      
+      /* 매치 종료 카드 (특별 강조) */
+      .section-card.match-end-card {
+        margin-top: 20px;
+        background: linear-gradient(135deg, rgba(255,71,87,0.04), rgba(255,71,87,0.01));
+        border-color: rgba(255,71,87,0.15);
+      }
+      .section-card.match-end-card::before {
+        opacity: 0.9;
+      }
+      
+      /* ─── 상단 네비게이션 (3분할 그리드: 좌|중앙제목|우) ─── */
+      /* ─── 데스크탑 (641px~): 1줄 + 절대 중앙 타이틀 ─── */
+      .admin-top-nav {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .admin-top-nav-left {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        z-index: 2;
+      }
+      .admin-top-nav-title {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 15px;
+        font-weight: 900;
+        color: var(--text);
+        letter-spacing: -0.3px;
+        text-align: center;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 1;
+      }
+      .admin-top-nav-right {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        min-height: 32px;
+        z-index: 2;
+      }
+      /* ─── 모바일 (~640px): 2줄 레이아웃 ─── */
+      /* 1줄: 타이틀 중앙 / 2줄: 버튼들 왼쪽 + 저장상태 오른쪽 */
+      @media (max-width: 640px) {
+        .admin-top-nav {
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .admin-top-nav-title {
+          position: static;
+          transform: none;
+          order: 1;
+          width: 100%;
+          font-size: 14px;
+          pointer-events: auto;
+        }
+        .admin-top-nav-left {
+          order: 2;
+          flex: 1;
+        }
+        .admin-top-nav-right {
+          order: 3;
+        }
+      }
+      @media (max-width: 480px) {
+        .admin-top-nav-title { font-size: 13px; }
+        .admin-top-nav-left .btn-header-nav,
+        .admin-top-nav-left .btn-header-edit { padding: 5px 9px; font-size: 12px; }
+      }
+      
+      /* ─── 상단 헤더 버튼 ─── */
+      .btn-header-nav {
+        background: transparent;
+        border: 1px solid var(--border-hover);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .btn-header-nav:hover, .btn-header-nav:active { 
+        background: var(--bg3); 
+        border-color: var(--green);
+      }
+      .btn-header-edit {
+        background: transparent;
+        border: 1px solid rgba(64,196,255,0.4);
+        color: var(--blue);
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .btn-header-edit:hover, .btn-header-edit:active { 
+        background: rgba(64,196,255,0.1); 
+        border-color: var(--blue);
+      }
+      
+      /* ─── 대기열 / 미참여 회원 풀 박스 ─── */
+      .pool-box { 
+        border: 2px dashed var(--border-hover); 
+        border-radius: 12px; padding: 12px; min-height: 120px; 
+        background: var(--bg3); 
+        transition: 0.2s; 
+      }
+      .pool-box.pool-primary {
+        border-color: rgba(64,196,255,0.3);
+      }
+      
+      /* ─── 팀 컨테이너 ─── */
+      .team-container { 
+        background: var(--bg3); 
+        border: 1px solid var(--border); 
+        border-radius: 12px; padding: 12px; min-height: 150px; margin-bottom: 15px; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
+      }
+      
+      /* ═══════════════════════════════════════════════ */
+      /* [Phase 3] 팀 카드 시각 업그레이드              */
+      /* ═══════════════════════════════════════════════ */
+      
+      /* 팀 이름 헤더 (팀 컬러 dot + 이름) */
+      .team-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .team-header-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        flex: 1;
+      }
+      .team-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
+        flex-shrink: 0;
+      }
+      .team-name {
+        font-size: 14px;
+        font-weight: 900;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      /* OVR 바 (평균 OVR 시각화) */
+      .team-ovr-display {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .team-ovr-bar-wrap {
+        flex: 1;
+        height: 6px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 3px;
+        overflow: hidden;
+        position: relative;
+      }
+      .team-ovr-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--green), var(--green-dark));
+        border-radius: 3px;
+        transition: width 0.4s ease;
+      }
+      .team-ovr-value {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 16px;
+        font-weight: 900;
+        color: var(--green);
+        letter-spacing: 1px;
+        min-width: 32px;
+        text-align: right;
+      }
+      
+      /* 유니폼 칩 (드롭다운 대체 표시) */
+      .team-jersey-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px 5px 6px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text);
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-bottom: 10px;
+      }
+      .team-jersey-chip:hover {
+        background: rgba(255,255,255,0.08);
+      }
+      .team-jersey-chip-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        border: 1px solid rgba(255,255,255,0.2);
+        flex-shrink: 0;
+      }
+      .team-jersey-chip-empty {
+        color: var(--muted);
+        font-style: italic;
+      }
+      
+      /* 포지션 요약 칩 (FW 1 · MF 2 · DF 2) */
+      .pos-summary {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed rgba(255,255,255,0.08);
+      }
+      .pos-summary-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 7px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+      .pos-summary-chip .pos-label {
+        font-weight: 900;
+      }
+      .pos-summary-chip .pos-count {
+        color: var(--muted2);
+        font-weight: 700;
+      }
+      .pos-summary-chip.chip-FW .pos-label { color: #FF4757; }
+      .pos-summary-chip.chip-MF .pos-label { color: #2ED573; }
+      .pos-summary-chip.chip-DF .pos-label { color: #1E90FF; }
+      .pos-summary-chip.chip-GK .pos-label { color: #FFA502; }
+      
+      /* 팀 컨테이너 hover 효과 */
+      @media (hover: hover) {
+        .team-container {
+          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .team-container:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+          border-color: rgba(255,255,255,0.12);
+        }
+      }
+      
+      /* ═══════════════════════════════════════════════ */
+      /* [Phase 3] 모바일 탭-투-이동 방식                */
+      /* ═══════════════════════════════════════════════ */
+      
+      /* 선수 이름 탭 영역 - 클릭 가능 표시 */
+      .player-item-tappable {
+        cursor: pointer;
+        position: relative;
+      }
+      @media (hover: hover) {
+        .player-item-tappable:hover {
+          background: rgba(255,255,255,0.03);
+        }
+      }
+      
+      /* 이동 모달: 팀 선택 리스트 */
+      .move-target-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 4px 0;
+      }
+      .move-target-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+        text-align: left;
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 700;
+        width: 100%;
+      }
+      .move-target-btn:hover {
+        background: rgba(255,255,255,0.08);
+      }
+      .move-target-btn:active {
+        transform: scale(0.98);
+      }
+      .move-target-btn.current {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+      .move-target-btn-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .move-target-btn-count {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 700;
+        background: rgba(255,255,255,0.06);
+        padding: 2px 8px;
+        border-radius: 10px;
+      }
+      
+      /* 모바일에서만 타일러블 힌트 표시 */
+      .tap-hint {
+        display: none;
+        font-size: 10px;
+        color: var(--muted);
+        margin-left: 4px;
+      }
+      @media (max-width: 768px) {
+        .tap-hint { display: inline; }
+      }
+      
+      /* ─── 팀 그리드 (row/col 대체) ─── */
+      .team-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      @media (max-width: 768px) {
+        .team-grid { grid-template-columns: 1fr; }
+      }
+      
+      /* ─── 선수 카드 / pill ─── */
+      .grid-list { 
+        display: grid; 
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 8px; 
+        /* 자식 요소가 min-width 없어도 그리드 셀 안에 갇히도록 */
+        width: 100%;
+        min-width: 0;
+      }
+      /* 그리드 셀 내부 콘텐츠가 셀을 넘지 않도록 */
+      .grid-list > * { min-width: 0; overflow: hidden; }
+      
+      .player-item { 
+        display: flex; align-items: center; padding: 8px; 
+        background: var(--bg2); 
+        border: 1px solid var(--border); 
+        border-radius: 8px; margin-bottom: 6px; cursor: grab; 
+        color: var(--text);
+        min-width: 0; overflow: hidden;
+      }
+      .player-item:hover { border-color: var(--border-hover); }
+      
+      .player-img { 
+        width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; 
+        object-fit: cover; background: var(--bg); 
+        flex-shrink: 0;
+      }
+      
+      .player-pill { 
+        background: var(--bg2); 
+        border: 1px solid var(--border); 
+        border-radius: 10px; cursor: grab; 
+        color: var(--text);
+        width: 100%; margin: 0; 
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2); 
+        min-width: 0;
+        overflow: hidden;
+      }
+      .player-pill:hover { border-color: var(--border-hover); }
+      /* pill 내부의 모든 flex 자식이 축소 가능하도록 */
+      .player-pill > * { min-width: 0; }
+      /* 이름 텍스트는 말줄임 처리 */
+      .player-pill .text-truncate {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      /* ─── 대기열 전용 pill (공간 최적화) ─── */
+      .pill-waiting {
+        padding: 6px 6px !important;
+        gap: 0;
+      }
+      .pill-waiting .pos-badge {
+        font-size: 9px !important;
+        padding: 3px 5px !important;
+        margin-right: 5px;
+      }
+      .pill-waiting .player-name {
+        font-size: 12px;
+        font-weight: 700;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
+      .pill-waiting .ovr-badge {
+        font-size: 10px !important;
+        padding: 2px 5px !important;
+        margin-left: 4px;
+        flex-shrink: 0;
+      }
+      .pill-waiting .edit-icon {
+        padding: 0 3px !important;
+        margin-left: 2px !important;
+        font-size: 12px !important;
+        flex-shrink: 0;
+      }
+      
+      /* ─── 아이콘 버튼 ─── */
+      .edit-icon { 
+        cursor: pointer; opacity: 0.5; padding: 0 5px; 
+        transition: 0.2s; font-size: 14px; color: var(--muted2);
+      }
+      .edit-icon:hover { opacity: 1; color: var(--green); }
+      
+      .remove-icon { 
+        cursor: pointer; padding: 0 5px; font-size: 14px; 
+        color: var(--muted); font-weight: bold; 
+        transition: 0.2s; margin-left: 4px; 
+      }
+      .remove-icon:hover { color: var(--red); }
+      
+      /* ─── 포지션 배지 ─── */
+      .pos-badge { 
+        font-size: 9px; padding: 3px 5px; border-radius: 4px; 
+        font-weight: 800; border: 1px solid var(--border); 
+        background: var(--bg3); color: var(--muted2); 
+      }
+      .pos-FW { color: #fff !important; background: var(--pos-fw) !important; border-color: var(--pos-fw) !important; }
+      .pos-MF { color: #fff !important; background: var(--pos-mf) !important; border-color: var(--pos-mf) !important; }
+      .pos-DF { color: #fff !important; background: var(--pos-df) !important; border-color: var(--pos-df) !important; }
+      .pos-GK { color: #fff !important; background: var(--pos-gk) !important; border-color: var(--pos-gk) !important; }
+      
+      /* ─── OVR 배지 ─── */
+      .ovr-badge {
+        background: var(--bg3);
+        color: var(--text);
+        border: 1px solid var(--border);
+        font-size: 0.7rem;
+        padding: 2px 4px;
+        border-radius: 4px;
+        margin-left: 4px;
+      }
+      
+      /* ─── 대기 인원수 배지 ─── */
+      .count-badge {
+        background: var(--bg3);
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      
+      /* ─── 빈 상태 메시지 ─── */
+      .empty-alert {
+        background: var(--bg3);
+        border: 1px dashed var(--border);
+        color: var(--muted2);
+        padding: 16px;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: 700;
+        margin-top: 8px;
+      }
+      
+      /* ─── 관리자 컨트롤 패널 ─── */
+      .admin-control-panel { 
+        display: flex; flex-direction: column; gap: 12px; 
+        margin-bottom: 24px; 
+        background: var(--bg3); 
+        padding: 16px; border-radius: 16px; 
+        border: 1px solid var(--border); 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      }
+      
+      .btn-admin-primary { 
+        width: 100%; padding: 16px; 
+        background: linear-gradient(135deg, var(--green), var(--green-dark)); 
+        color: #000; border: none; border-radius: 12px; 
+        font-size: 16px; font-weight: 900; 
+        box-shadow: 0 4px 12px rgba(0,230,118,0.25); 
+        cursor: pointer; 
+      }
+      @media (hover: hover) {
+        .btn-admin-primary:hover { 
+          transform: translateY(-1px); 
+          box-shadow: 0 6px 18px rgba(0,230,118,0.35); 
+        }
+      }
+      .btn-admin-primary:active { transform: scale(0.98); }
+      
+      .admin-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .btn-admin-secondary { 
+        padding: 12px; 
+        background: rgba(255,255,255,0.05); 
+        color: var(--text); 
+        border: 1px solid rgba(255,255,255,0.1); 
+        border-radius: 10px; font-size: 13px; font-weight: 700; 
+        cursor: pointer; transition: background 0.2s; 
+      }
+      .btn-admin-secondary:active { background: rgba(255,255,255,0.1); }
+      
+      .admin-grid-3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+      .btn-admin-outline { 
+        padding: 10px 0; background: transparent; 
+        border: 1px solid var(--border-hover);
+        color: var(--text);
+        border-radius: 8px; font-size: 12px; font-weight: 700; 
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .btn-admin-outline:hover { background: var(--bg3); border-color: var(--green); }
+      .btn-admin-link { border: 1px solid rgba(64,196,255,0.4); color: var(--blue); }
+      .btn-admin-danger { border: 1px solid rgba(255,71,87,0.4); color: var(--red); }
+      .btn-admin-success { border: 1px solid rgba(46,213,115,0.4); color: var(--pos-mf); }
+      
+      /* ─── 전력 비교 버튼 ─── */
+      .btn-chart-compare {
+        width: 100%;
+        padding: 12px;
+        background: var(--bg3);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      }
+      .btn-chart-compare:hover, .btn-chart-compare:active {
+        background: var(--bg);
+        border-color: var(--border-hover);
+      }
+      
+      /* ─── 매치 종료 버튼 ─── */
+      .btn-end-match { 
+        width: 100%;
+        background-color: var(--red); 
+        color: white; border: none; 
+        padding: 16px;
+        border-radius: 10px;
+        font-size: 1.1rem; 
+        font-weight: 700;
+        cursor: pointer;
+        letter-spacing: -0.5px;
+        transition: 0.2s;
+        box-shadow: 0 4px 12px rgba(255,71,87,0.25);
+      }
+      @media (hover: hover) {
+        .btn-end-match:hover { 
+          background-color: #e04050; 
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(255,71,87,0.35);
+        }
+      }
+      .btn-end-match:active { background-color: #c73447; transform: scale(0.98); }
+      
+      /* ═══════════════════════ 📋 폼 스타일 (다른 페이지와 통일) ═══════════════════════ */
+      .form-group { margin-bottom: 14px; }
+      .form-label { 
+        display: block; font-size: 11px; font-weight: 700; 
+        color: var(--muted); margin-bottom: 7px; 
+        letter-spacing: .5px; text-transform: uppercase;
+      }
+      .form-input {
+        width: 100%;
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        padding: 12px 15px;
+        color: var(--text);
+        font-family: inherit;
+        font-size: 14px;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        transition: border-color 0.2s;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      /* iOS Safari date/datetime-local input 박스 오버플로 방지 */
+      input[type="date"].form-input,
+      input[type="datetime-local"].form-input,
+      input[type="time"].form-input {
+        display: block;
+        width: 100%;
+        min-height: 44px;
+        text-align: left;
+      }
+      input[type="date"]::-webkit-date-and-time-value,
+      input[type="datetime-local"]::-webkit-date-and-time-value {
+        text-align: left;
+      }
+      .form-input:focus {
+        border-color: var(--green);
+      }
+      .form-input::placeholder {
+        color: var(--muted);
+      }
+      select.form-input {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%238a9e8c'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+      }
+      select.form-input option {
+        background: var(--bg2);
+        color: var(--text);
+      }
+      
+      .input-row {
+        display: flex;
+        gap: 10px;
+      }
+      .input-row .form-group {
+        flex: 1;
+        min-width: 0;
+      }
+      
+      .stat-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      
+      .input-group-inline {
+        display: flex;
+        gap: 8px;
+      }
+      .input-group-inline .form-input {
+        border-radius: 11px;
+      }
+      .btn-inline {
+        background: var(--green);
+        color: #000;
+        border: none;
+        border-radius: 11px;
+        padding: 0 16px;
+        font-weight: 900;
+        font-size: 13px;
+        cursor: pointer;
+        transition: 0.2s;
+        white-space: nowrap;
+      }
+      .btn-inline:active { background: var(--green-dark); transform: scale(0.98); }
+      
+      /* ═══════════════════════ 🪟 바텀시트 모달 (다른 페이지와 통일) ═══════════════════════ */
+      /* 모달 기본 (모바일): 바텀시트 */
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.75);
+        z-index: 2000;
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+      }
+      .modal-bg.show { display: flex; }
+      
+      .modal-sheet {
+        background: var(--bg2);
+        width: 100%;
+        max-width: 480px;
+        border-radius: 24px 24px 0 0;
+        padding: 20px 20px 36px;
+        border: 1px solid var(--border);
+        border-bottom: none;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.32, 1, 0.23, 1);
+        max-height: 92vh;
+        overflow-y: auto;
+      }
+      .modal-bg.show .modal-sheet { transform: translateY(0); }
+      
+      .modal-pill {
+        width: 36px;
+        height: 4px;
+        background: var(--border-hover);
+        border-radius: 2px;
+        margin: 0 auto 20px;
+      }
+      
+      /* 모달 반응형 (768px 이상 PC/태블릿): 중앙 팝업 */
+      @media (min-width: 768px) {
+        .modal-bg { align-items: center; padding: 20px; }
+        .modal-sheet {
+          border-radius: 24px;
+          padding: 24px 20px;
+          border-bottom: 1px solid var(--border);
+          transform: scale(0.95);
+          opacity: 0;
+          transition: transform 0.25s cubic-bezier(0.32, 1, 0.23, 1), opacity 0.25s;
+          max-height: 88vh;
+        }
+        .modal-bg.show .modal-sheet { transform: scale(1); opacity: 1; }
+        .modal-pill { display: none; }
+      }
+      
+      .modal-header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .modal-title {
+        font-size: 17px;
+        font-weight: 900;
+        color: var(--green);
+      }
+      .modal-title-danger {
+        color: var(--red);
+      }
+      
+      .modal-close-btn {
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        outline: none;
+        -webkit-appearance: none;
+        transition: 0.2s;
+      }
+      .modal-close-btn:active { color: var(--text); transform: scale(0.9); }
+      
+      .btn-modal-submit {
+        width: 100%;
+        height: 54px;
+        background: var(--green);
+        color: #000;
+        border: none;
+        border-radius: 14px;
+        font-weight: 900;
+        font-size: 15px;
+        cursor: pointer;
+        margin-top: 8px;
+        transition: 0.2s;
+        -webkit-appearance: none;
+      }
+      .btn-modal-submit:active { transform: scale(0.98); }
+      .btn-modal-submit.btn-modal-danger {
+        background: var(--red);
+        color: #fff;
+      }
+      
+      /* 선수 스탯 모달 전용 */
+      .player-edit-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+      .ovr-result {
+        margin-top: 20px;
+        text-align: center;
+        padding: 14px;
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        font-weight: 700;
+      }
+      .ovr-result .ovr-val {
+        font-size: 1.25rem;
+        font-weight: 900;
+        color: var(--green);
+        font-family: 'Bebas Neue', sans-serif;
+        letter-spacing: 1px;
+      }
+      
+      /* 매치 종료 시상 모달 섹션 분리 */
+      .award-section {
+        margin-bottom: 16px;
+      }
+      .award-win-section {
+        padding-bottom: 16px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .award-label-win { color: var(--red); font-weight: 700; }
+      .award-label-gold { color: var(--text); font-weight: 700; }
+      .award-label-silver { color: var(--muted2); font-weight: 700; }
+      .award-label-bronze { color: #b2bec3; font-weight: 700; }
+      
+      /* ─── 반응형 ─── */
+      @media (max-width: 768px) { 
+        body { padding: 10px; } 
+        .admin-card { padding: 15px; } 
+        .pool-box, .team-container { min-height: 100px; padding: 8px 6px; } 
+        .player-item { padding: 6px; } 
+        .grid-list { grid-template-columns: repeat(2, 1fr); gap: 5px; } 
+      }
+      
+      /* ─── 푸터 ─── */
+      .footer-info { 
+        text-align: center; padding: 16px 0; 
+        color: var(--muted); margin-top: 24px; 
+        border-top: 1px solid var(--border);
+      }
+
+      /* ─── 저장 상태 인디케이터 ─── */
+      #saveStatus {
+        font-size: 12px;
+        color: var(--muted2);
+        font-weight: 700;
+        transition: opacity 0.2s ease;
+      }
+      #saveStatus:empty { opacity: 0; }
+      #saveStatus:not(:empty) { opacity: 1; }
+
+      /* ─── 📊 상태 요약 바 ─── */
+      .status-bar {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 14px 12px;
+        background: linear-gradient(135deg, var(--bg2), var(--bg3));
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        margin-bottom: 18px;
+        position: relative;
+        overflow: hidden;
+      }
+      .status-bar::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at top right, rgba(0,230,118,0.08) 0%, transparent 60%);
+        pointer-events: none;
+      }
+      .status-item {
+        text-align: center;
+        position: relative;
+        z-index: 1;
+      }
+      .status-label {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--muted);
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+      }
+      .status-value {
+        font-size: 20px;
+        font-weight: 900;
+        font-family: 'Bebas Neue', sans-serif;
+        letter-spacing: 1px;
+        display: inline-block;
+      }
+      .status-value.status-assigned { color: var(--green); }
+      .status-value.status-waiting  { color: var(--amber); }
+      .status-value.status-target   { color: var(--text); }
+      .status-value .unit {
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 400;
+        margin-left: 2px;
+      }
+
+      /* ─── ▼ Collapsible 접기/펼치기 섹션 ─── */
+      .collapsible-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 16px;
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        cursor: pointer;
+        user-select: none;
+        transition: border-color .2s;
+      }
+      .collapsible-trigger:hover { border-color: var(--border-hover); }
+      .collapsible-trigger.is-open { 
+        border-color: rgba(0,230,118,0.25);
+        border-bottom-left-radius: 0; 
+        border-bottom-right-radius: 0;
+      }
+      .collapsible-label-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .collapsible-count {
+        background: var(--bg3);
+        color: var(--muted2);
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 10px;
+        min-width: 24px;
+        text-align: center;
+      }
+      .collapsible-arrow {
+        width: 18px;
+        height: 18px;
+        color: var(--muted2);
+        transition: transform .25s cubic-bezier(0.32, 1, 0.23, 1);
+      }
+      .collapsible-trigger.is-open .collapsible-arrow {
+        transform: rotate(180deg);
+        color: var(--green);
+      }
+      .collapsible-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height .35s ease;
+      }
+      .collapsible-body.is-open {
+        max-height: 2000px;
+      }
+      .collapsible-body > .collapsible-inner {
+        background: var(--bg2);
+        border: 1px solid rgba(0,230,118,0.25);
+        border-top: none;
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
+        padding: 14px 16px;
+      }
+      .collapsible-section {
+        margin-bottom: 18px;
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="admin-card">
+      <div class="admin-top-nav">
+        <div class="admin-top-nav-left">
+          <button class="btn-header-nav" onclick="goToMain()">메인</button>
+          <button class="btn-header-nav" onclick="goToRegister()">대기열</button>
+          <button class="btn-header-edit" onclick="openEditMatchModal()">수정</button>
+        </div>
+        <div class="admin-top-nav-title">팀 배정 (관리자)</div>
+        <div class="admin-top-nav-right"><span id="saveStatus"></span></div>
+      </div>
+
+      <!-- ═══════════════ ① 📊 상태 요약 바 ═══════════════ -->
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-label">배정</div>
+          <div class="status-value status-assigned"><span id="statAssigned">0</span><span class="unit">명</span></div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">대기</div>
+          <div class="status-value status-waiting"><span id="statWaiting">0</span><span class="unit">명</span></div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">목표</div>
+          <div class="status-value status-target"><span id="statTarget">0</span><span class="unit">명</span></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ ② 대기열 + 게스트 추가 ═══════════════ -->
+      <div class="section-card accent-green">
+        <div class="section-header">
+          <div class="section-header-left">
+            <svg class="section-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            대기열 <span class="section-header-sub">(ㄱㄴㄷ순)</span>
+          </div>
+          <span class="count-badge" id="waitCount">0</span>
+        </div>
+        <div id="waitPool" class="pool-box pool-primary" ondrop="drop(event, 'waiting')" ondragover="allowDrop(event)">
+          <div class="input-group-inline mb-3">
+            <input type="text" id="guestName" class="form-input" placeholder="게스트 이름" style="flex:1;">
+            <button class="btn-inline" onclick="addGuest()">+ 추가</button>
+          </div>
+          <div id="waitListContent" class="grid-list">
+            <span class="text-muted small" style="grid-column: 1 / -1;">데이터를 불러오는 중...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ ③+⑤ 팀 관리 툴박스 (액션 통합) ═══════════════ -->
+      <div class="section-card accent-green">
+        <div class="section-header">
+          <div class="section-header-left">
+            <svg class="section-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            팀 관리<span class="tap-hint">· 선수 탭하면 이동</span>
+          </div>
+        </div>
+        
+        <!-- Primary 액션 -->
+        <button class="btn-admin-primary" onclick="autoDivide()">스마트 팀짜기 (OVR 자동배정)</button>
+        
+        <!-- 보조 액션 툴바 -->
+        <div class="action-toolbar" style="margin-top: 10px;">
+          <div class="action-toolbar-row cols-3">
+            <button class="btn-toolbar" onclick="resetTeams()">
+              <svg class="btn-icon" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              초기화
+            </button>
+            <button class="btn-toolbar" onclick="copyKaTalk()">
+              <svg class="btn-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              카톡 복사
+            </button>
+            <button class="btn-toolbar" onclick="showAllTeamsChart()">
+              <svg class="btn-icon" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><line x1="3" y1="20" x2="21" y2="20"/></svg>
+              전력 비교
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ ④ 팀 편성 결과 (주인공) ═══════════════ -->
+      <div id="teamResult" class="team-grid">
+        <div class="text-center text-muted small mt-4" style="grid-column: 1 / -1;">데이터를 불러오고 있습니다...</div>
+      </div>
+
+      <!-- ═══════════════ ⑥ ▼ 미참여 회원 (접힘) ═══════════════ -->
+      <div class="section-card accent-muted collapsible-card collapsible-section">
+        <div class="collapsible-trigger" id="unregTrigger" onclick="toggleCollapse('unreg')">
+          <div class="collapsible-label-wrap">
+            <svg class="section-icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>
+            미참여 회원
+            <span class="collapsible-count" id="unregCount">0</span>
+          </div>
+          <svg class="collapsible-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+        <div class="collapsible-body" id="unregBody">
+          <div class="collapsible-inner">
+            <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px;">클릭하여 합류 · 이름 누르면 대기열로 이동</div>
+            <div id="unregPool" class="pool-box grid-list" ondrop="drop(event, 'unregistered')" ondragover="allowDrop(event)" style="background: transparent; border: none; padding: 0;">
+              <span class="text-muted small" style="grid-column: 1 / -1;">데이터를 불러오는 중...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ ⑦ ▼ 고급 설정 (접힘) ═══════════════ -->
+      <div class="section-card accent-amber collapsible-card collapsible-section">
+        <div class="collapsible-trigger" id="advancedTrigger" onclick="toggleCollapse('advanced')">
+          <div class="collapsible-label-wrap">
+            <svg class="section-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            고급 설정
+          </div>
+          <svg class="collapsible-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+        <div class="collapsible-body" id="advancedBody">
+          <div class="collapsible-inner">
+            <div style="font-size: 11px; color: var(--muted); margin-bottom: 12px;">자주 사용하지 않는 관리 도구</div>
+            <div class="admin-grid-3">
+              <button class="btn-admin-outline btn-admin-link" onclick="copyGuestLink()">용병 초대</button>
+              <button class="btn-admin-outline btn-admin-danger" onclick="removeTeam()">- 팀 삭제</button>
+              <button class="btn-admin-outline btn-admin-success" onclick="addTeam()">+ 팀 추가</button>
+            </div>
+            <button class="btn-admin-outline" style="width:100%; margin-top:8px;" onclick="openJerseyModal()"><svg class="btn-icon" viewBox="0 0 24 24"><path d="M16 3 L20 3 L22 7 L18 10 L18 21 L6 21 L6 10 L2 7 L4 3 L8 3 C 8 5 10 6 12 6 C 14 6 16 5 16 3 Z"/></svg>유니폼 관리</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ ⑧ 매치 종료 및 시상 (특별 강조) ═══════════════ -->
+      <div class="section-card match-end-card accent-red">
+        <button class="btn-end-match" onclick="openEndMatchModal()"><svg class="btn-icon" viewBox="0 0 24 24" style="width:18px;height:18px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>매치 종료 및 시상</button>
+      </div>
+    </div>
+
+    <div class="footer-info">
+      <div style="opacity: 0.5; font-size: 11px;">FCMON Admin · v1.0</div>
+      <div style="opacity: 0.35; font-size: 10px; margin-top: 2px;">매니저 전용 페이지</div>
+    </div>
+
+    <!-- [Phase 3] 선수 이동 모달 (탭-투-이동) -->
+    <div class="modal-bg" id="movePlayerModal">
+      <div class="modal-sheet">
+        <div class="modal-pill"></div>
+        <div class="modal-header-bar">
+          <div class="modal-title" id="movePlayerTitle">선수 이동</div>
+          <button class="modal-close-btn" onclick="closeModal('movePlayerModal')">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">어디로 이동할까요?</div>
+        <div class="move-target-list" id="moveTargetList"></div>
+      </div>
+    </div>
+
+    <!-- 매치 정보 수정 모달 -->
+    <div class="modal-bg" id="editMatchModal">
+      <div class="modal-sheet">
+        <div class="modal-pill"></div>
+        <div class="modal-header-bar">
+          <div class="modal-title"><svg class="btn-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>매치 정보 수정</div>
+          <button class="modal-close-btn" onclick="closeModal('editMatchModal')">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">일시</label>
+          <input type="datetime-local" id="e_date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">장소</label>
+          <input type="text" id="e_loc" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">팀당 인원</label>
+          <input type="number" id="e_per" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">관리자 비밀번호</label>
+          <input type="password" id="e_current_pw" class="form-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="현재 비밀번호">
+        </div>
+        <div class="form-group">
+          <label class="form-label">새 관리자 비밀번호 <span style="color:var(--muted);font-size:11px;">(변경 시 입력)</span></label>
+          <input type="password" id="e_pw" class="form-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="새 비밀번호 4자리">
+        </div>
+        <button class="btn-modal-submit" onclick="saveMatchEdit()"><svg class="btn-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>수정 저장</button>
+      </div>
+    </div>
+
+    <!-- ⚙️ 선수 스탯 수정 모달 -->
+    <div class="modal-bg" id="statModal">
+      <div class="modal-sheet">
+        <div class="modal-pill"></div>
+        <div class="modal-header-bar">
+          <div class="modal-title" id="modalPlayerName">선수 수정</div>
+          <button class="modal-close-btn" onclick="closeModal('statModal')">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <input type="hidden" id="modalUserId">
+        <div class="form-group">
+          <label class="form-label">주 포지션</label>
+          <select id="m_pos" class="form-input">
+            <option value="FW">FW (공격수)</option>
+            <option value="MF">MF (미드필더)</option>
+            <option value="DF">DF (수비수)</option>
+            <option value="GK">GK (골키퍼)</option>
+          </select>
+        </div>
+        <div class="stat-grid-2">
+          <div class="form-group"><label class="form-label">속도</label><input type="number" id="m_speed" class="form-input stat-input"></div>
+          <div class="form-group"><label class="form-label">슈팅</label><input type="number" id="m_shoot" class="form-input stat-input"></div>
+          <div class="form-group"><label class="form-label">패스</label><input type="number" id="m_pass" class="form-input stat-input"></div>
+          <div class="form-group"><label class="form-label">드리블</label><input type="number" id="m_drib" class="form-input stat-input"></div>
+          <div class="form-group"><label class="form-label">수비</label><input type="number" id="m_def" class="form-input stat-input"></div>
+          <div class="form-group"><label class="form-label">피지컬</label><input type="number" id="m_phys" class="form-input stat-input"></div>
+          <div class="form-group"><label class="form-label">체력</label><input type="number" id="m_stamina" class="form-input stat-input"></div>
+          <div class="form-group"><label class="form-label">민첩성</label><input type="number" id="m_agility" class="form-input stat-input"></div>
+        </div>
+        <div class="ovr-result">
+          <span style="color: var(--muted2); font-size: 13px;">종합 OVR:</span>
+          <span class="ovr-val" id="m_ovr">50</span>
+        </div>
+        <button class="btn-modal-submit" onclick="saveStats()">💾 저장하기</button>
+      </div>
+    </div>
+
+    <!-- 📊 전력 비교 차트 모달 -->
+    <div class="modal-bg" id="chartModal">
+      <div class="modal-sheet">
+        <div class="modal-pill"></div>
+        <div class="modal-header-bar">
+          <div class="modal-title" id="chartTeamName">📊 전력 비교</div>
+          <button class="modal-close-btn" onclick="closeModal('chartModal')">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div style="padding: 10px 0;">
+          <canvas id="teamRadarChart" style="max-height: 320px;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🏁 매치 종료 및 시상 모달 -->
+    <div class="modal-bg" id="endMatchModal">
+      <div class="modal-sheet">
+        <div class="modal-pill"></div>
+        <div class="modal-header-bar">
+          <div class="modal-title modal-title-danger">🏁 경기 결과 기록</div>
+          <button class="modal-close-btn" onclick="closeModal('endMatchModal')">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="award-win-section">
+          <label class="form-label award-label-win">🏆 오늘의 우승팀 (전원 +1점)</label>
+          <select id="awardWinTeam" class="form-input"></select>
+        </div>
+        <div class="award-section form-group">
+          <label class="form-label award-label-gold">🥇 MOM (+3)</label>
+          <select id="awardMom" class="form-input"></select>
+        </div>
+        <div class="award-section form-group">
+          <label class="form-label award-label-silver">🥈 2위 (+2)</label>
+          <select id="awardSecond" class="form-input"></select>
+        </div>
+        <div class="award-section form-group">
+          <label class="form-label award-label-bronze">🥉 3위 (+1)</label>
+          <select id="awardThird" class="form-input"></select>
+        </div>
+        <button class="btn-modal-submit btn-modal-danger" onclick="executeEndMatch()">🏆 종료 및 랭킹반영</button>
+      </div>
+    </div>
+
+    <!-- 📱 매치 결과 공유 카드 모달 -->
+    <div class="modal-bg" id="resultCardModal">
+      <div class="modal-sheet" style="max-width: 420px;">
+        <div class="modal-pill"></div>
+        <div class="modal-header-bar">
+          <div class="modal-title">📱 매치 결과 카드</div>
+          <button class="modal-close-btn" onclick="closeResultCardModal()">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:14px; line-height:1.5;">
+          아래 카드를 이미지로 저장하여 카톡 등에 공유할 수 있습니다.
+        </div>
+        
+        <!-- 공유 카드 렌더 영역 (실제 캡처 대상) -->
+        <div id="resultCardContainer" style="display:flex; justify-content:center; padding:8px 0;"></div>
+        
+        <!-- 버튼들 -->
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button class="btn-admin-secondary" onclick="closeResultCardModal()" style="flex:1;">닫기</button>
+          <button class="btn-admin-primary" onclick="downloadResultCard()" id="shareCardBtn" style="flex:2;">📱 이미지 저장/공유</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 👕 유니폼 관리 모달 -->
+    <div class="modal-bg" id="jerseyModal">
+      <div class="modal-sheet">
+        <div class="modal-pill"></div>
+        <div class="modal-header-bar">
+          <div class="modal-title">👕 유니폼 관리</div>
+          <button class="modal-close-btn" onclick="closeModal('jerseyModal')">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:14px; line-height:1.5;">
+          팀 편성 시 선택할 수 있는 유니폼/조끼 목록을 관리합니다.<br>
+          색상은 카톡 복사나 기록에 시각적 구분을 돕습니다.
+        </div>
+        
+        <!-- 현재 유니폼 목록 -->
+        <div id="jerseyList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
+        
+        <!-- 유니폼 추가/수정 폼 -->
+        <div style="background: var(--bg3); border:1px solid var(--border); border-radius:12px; padding:14px; margin-top:12px;">
+          <div style="font-size:12px; font-weight:700; color:var(--green); margin-bottom:10px;" id="jerseyFormTitle">+ 새 유니폼 추가</div>
+          <input type="hidden" id="jerseyEditId" value="">
+          <div class="form-group">
+            <label class="form-label" style="font-size:11px;">이름 (예: 유니폼 백색, 조끼 A)</label>
+            <input type="text" id="jerseyName" class="form-input" placeholder="유니폼 이름" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size:11px;">색상</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input type="color" id="jerseyColor" value="#00E676" style="width:50px; height:40px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:transparent;">
+              <input type="text" id="jerseyColorHex" class="form-input" value="#00E676" style="flex:1;" maxlength="7">
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-admin-secondary" onclick="resetJerseyForm()" style="flex:1;">취소</button>
+            <button class="btn-admin-primary" onclick="saveJersey()" id="jerseySaveBtn" style="flex:2;">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const firebaseConfig = { apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU", authDomain: "fcmon-96ec1.firebaseapp.com", projectId: "fcmon-96ec1", storageBucket: "fcmon-96ec1.firebasestorage.app", messagingSenderId: "912620232254", appId: "1:912620232254:web:b86a27fa9f733f2c137b6f" };
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const AUTH_FUNCTIONS_BASE_URL = "https://us-central1-fcmon-96ec1.cloudfunctions.net";
+
+      async function sha256(text) {
+        const buf = new TextEncoder().encode(text);
+        const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+
+      async function makeMatchPwHash(pw) {
+        return sha256('match:' + pw);
+      }
+
+      async function callAuthFunction(name, payload) {
+        const res = await fetch(AUTH_FUNCTIONS_BASE_URL + '/' + name, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('auth-function-' + res.status);
+        return await res.json();
+      }
+
+      async function verifyMatchAdminPw(pw, matchData, gameId) {
+        if (!pw || !matchData) return false;
+        try {
+          const result = await callAuthFunction('verifyMatchAdminPassword', { gameId: gameId, pw: pw });
+          if (result && result.ok) {
+            if (result.migrated) {
+              delete matchData.adminPw;
+              delete matchData.adminPwHash;
+            }
+            return true;
+          }
+          return false;
+        } catch (err) {
+          console.warn('[Auth] 매치 비밀번호 서버 인증 실패, 로컬 호환 검증으로 전환:', err);
+        }
+        if (matchData.adminPwHash) return await makeMatchPwHash(pw) === matchData.adminPwHash;
+        return matchData.adminPw === pw;
+      }
+
+      /* ═══════════════════════ 🛡 XSS 방어 헬퍼 ═══════════════════════════════════ */
+      function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+      
+      function safePhotoUrl(url) {
+        if (!url) return '';
+        const s = String(url).trim();
+        if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(s)) return s;
+        if (/^https?:\/\//i.test(s)) return s;
+        return '';
+      }
+
+      function isActiveEntry(entry) {
+        return !!entry && entry.active !== false && !entry.canceledAt;
+      }
+      /* ═════════════════════════════════════════════════════════════════════════════ */
+
+      /* ═══════════════════════ 🌀 로딩 상태 유틸 ═══════════════════════════════════ */
+      function setButtonLoading(btn, isLoading, loadingText) {
+        if (!btn) return;
+        if (isLoading) {
+          if (!btn.dataset.originalText) {
+            btn.dataset.originalText = btn.textContent;
+          }
+          btn.textContent = loadingText || '처리 중...';
+          btn.disabled = true;
+          btn.classList.add('btn-loading');
+        } else {
+          if (btn.dataset.originalText) {
+            btn.textContent = btn.dataset.originalText;
+            delete btn.dataset.originalText;
+          }
+          btn.disabled = false;
+          btn.classList.remove('btn-loading');
+        }
+      }
+      /* ═════════════════════════════════════════════════════════════════════════════ */
+
+      /* ═══════════════════════ 📊 Chart.js 다크 테마 기본값 ═══════════════════════ */
+      if (typeof Chart !== 'undefined') {
+        Chart.defaults.color = '#E8F5E9';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
+        Chart.defaults.font.family = "'Noto Sans KR', sans-serif";
+      }
+      /* ═════════════════════════════════════════════════════════════════════════════ */
+
+      try { if (typeof MobileDragDrop !== 'undefined') { MobileDragDrop.polyfill({ holdToDrag: 200 }); window.addEventListener('touchmove', function() {}, {passive: false}); } } catch(e) {}
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const GAME_ID = urlParams.get('gameId');
+
+      let globalMatchData = null;
+      let unregisteredData = [], waitingData = [], teamsData = [];
+      let saveTimeout = null, isSaving = false;
+      let radarChart;
+      
+      // 👕 유니폼 관리
+      let jerseyList = []; // Firestore에서 불러온 유니폼 목록
+      let teamJerseys = {}; // { teamIdx: jerseyId } — 팀별 현재 선택된 유니폼
+      
+      const TEAM_NAMES = ['레드팀','블루팀','그린팀','옐로팀','화이트팀','블랙팀','오렌지팀','퍼플팀']; 
+      const TEAM_COLORS = [{border:'#d63031'}, {border:'#0984e3'}, {border:'#00b894'}, {border:'#fdcb6e'}, {border:'#636e72'}, {border:'#2d3436'}, {border:'#e17055'}, {border:'#9b59b6'}];
+      
+      // 기본 유니폼 (첫 관리 시 Firestore에 없으면 참고용)
+      const DEFAULT_JERSEYS = [
+        { id: 'j_white',   name: '유니폼 백색', color: '#FFFFFF' },
+        { id: 'j_green',   name: '유니폼 초록색', color: '#00E676' },
+        { id: 'j_vest_a',  name: '조끼 A', color: '#FF4757' },
+        { id: 'j_vest_b',  name: '조끼 B', color: '#40C4FF' },
+      ];
+
+      /* ═══════════════════════ 🪟 바텀시트 모달 제어 ═══════════════════════ */
+      function openSheet(id) {
+        document.getElementById(id).classList.add('show');
+      }
+      function closeModal(id) {
+        document.getElementById(id).classList.remove('show');
+      }
+      // 모달 배경 클릭 시 닫기
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.modal-bg').forEach(function(el){ 
+          el.addEventListener('click', function(e){ 
+            if(e.target === el){ el.classList.remove('show'); } 
+          }); 
+        });
+      });
+      /* ═════════════════════════════════════════════════════════════════════════ */
+
+      window.onload = function() {
+        if (!GAME_ID) { showToast("잘못된 접근입니다.", 'error'); setTimeout(() => { window.location.href = 'index.html'; }, 1500); return; }
+        document.querySelectorAll('.stat-input').forEach(el => el.addEventListener('input', calcModalOvr));
+        loadAllData();
+        loadJerseysRealtime(); // 유니폼 목록 실시간 구독
+      };
+
+      function goToMain() {
+        if (saveTimeout) { clearTimeout(saveTimeout); executeSave(() => window.location.href = 'index.html'); }
+        else window.location.href = 'index.html';
+      }
+      
+      function goToRegister() {
+        const targetUrl = 'register.html?gameId=' + encodeURIComponent(GAME_ID);
+        if (saveTimeout) { clearTimeout(saveTimeout); executeSave(() => window.location.href = targetUrl); }
+        else window.location.href = targetUrl;
+      }
+
+      /* ── 매치 수정 기능 ── */
+      function openEditMatchModal() {
+        if(!globalMatchData) return;
+        document.getElementById('e_date').value = globalMatchData.dateTime;
+        document.getElementById('e_loc').value = globalMatchData.location;
+        document.getElementById('e_per').value = globalMatchData.perTeam;
+        document.getElementById('e_current_pw').value = '';
+        document.getElementById('e_pw').value = '';
+        openSheet('editMatchModal');
+      }
+
+      async function saveMatchEdit() {
+        const eDate = document.getElementById('e_date').value;
+        const eLoc = document.getElementById('e_loc').value.trim();
+        const ePer = Number(document.getElementById('e_per').value);
+        const eCurrentPw = document.getElementById('e_current_pw').value.trim();
+        const ePw = document.getElementById('e_pw').value.trim();
+
+        if(!eDate || !eLoc || !eCurrentPw) { showToast("일시, 장소, 현재 비밀번호를 입력해주세요.", 'warning'); return; }
+        if(ePw && !/^[0-9]{4}$/.test(ePw)) { showToast("새 비밀번호는 숫자 4자리여야 합니다.", 'warning'); return; }
+
+        try {
+          const isCurrentPwOk = await verifyMatchAdminPw(eCurrentPw, globalMatchData, GAME_ID);
+          if (!isCurrentPwOk) { showToast("현재 비밀번호가 일치하지 않습니다.", 'error'); return; }
+
+          if (ePw) {
+            const result = await callAuthFunction('updateMatchAdminPassword', { gameId: GAME_ID, currentPw: eCurrentPw, newPw: ePw });
+            if (!result || !result.ok) { showToast("현재 비밀번호가 일치하지 않습니다.", 'error'); return; }
+          }
+          await db.collection("matches").doc(GAME_ID).update({
+            dateTime: eDate,
+            location: eLoc,
+            perTeam: ePer
+          });
+          showToast("매치 정보가 수정되었습니다.", 'success');
+          closeModal('editMatchModal');
+          location.reload(); // 데이터 동기화를 위해 페이지 새로고침
+        } catch (err) {
+          showToast("수정 실패: " + err.message, 'error');
+        }
+      }
+
+      function loadAllData() {
+        db.collection("matches").doc(GAME_ID).get().then((matchDoc) => {
+          if (!matchDoc.exists || matchDoc.data().deletedAt) { showToast("삭제되거나 존재하지 않는 매치입니다.", 'error'); setTimeout(() => { window.location.href = 'index.html'; }, 1500); return; }
+          globalMatchData = matchDoc.data();
+          const totalTeams = globalMatchData.totalTeams || 3;
+          teamsData = Array.from({length: totalTeams}, () => []);
+          // 팀별 유니폼 배정 복원
+          teamJerseys = globalMatchData.teamJerseys || {};
+
+          Promise.all([
+            db.collection("matches").doc(GAME_ID).collection("entries").get(),
+            db.collection("users").get()
+          ]).then(([entriesSnap, usersSnap]) => {
+            const allUsersMap = {};
+            usersSnap.forEach(doc => { 
+              const data = doc.data();
+              // 탈퇴 회원은 미참여 목록에서 제외 (이미 entries로 들어온 경우는 그대로 유지)
+              if (data.status === 'retired') return;
+              allUsersMap[data.name] = { userId: doc.id, ...data }; 
+            });
+
+            const entryNamesMap = {};
+            entriesSnap.forEach(doc => {
+              const p = doc.data();
+              if (!isActiveEntry(p)) return;
+              entryNamesMap[p.name] = true;
+              const userDbInfo = allUsersMap[p.name] || {};
+              const combinedP = {
+                userId: p.userId, name: p.name, teamLabel: p.teamLabel,
+                pos: userDbInfo.pos || p.pos || 'MF', 
+                ovr: userDbInfo.ovr || p.ovr || 50,
+                stats: userDbInfo.stats || p.stats || [50,50,50,50,50,50,50,50],
+                photoUrl: userDbInfo.photoUrl || p.photoUrl || '',
+                guestPw: p.guestPw || '',
+                note: (p.note || '').substring(0, 20),
+                isGuest: !userDbInfo.userId
+              };
+
+              if (p.teamLabel === '미정') waitingData.push(combinedP);
+              else {
+                const tIdx = TEAM_NAMES.indexOf(p.teamLabel);
+                if (tIdx !== -1 && tIdx < teamsData.length) teamsData[tIdx].push(combinedP);
+                else waitingData.push(combinedP);
+              }
+            });
+
+            Object.values(allUsersMap).forEach(u => { if (!entryNamesMap[u.name]) unregisteredData.push(u); });
+            renderAll();
+          });
+        }).catch(err => showToast("DB 에러: " + err.message, 'error'));
+      }
+
+      function sortByName(arr) { return arr.sort((a,b) => String(a.name).localeCompare(String(b.name), 'ko-KR')); }
+      function sortByPosAndName(arr) {
+        const posOrder = { 'FW': 1, 'MF': 2, 'DF': 3, 'GK': 4 };
+        return arr.sort((a,b) => {
+          const pA = posOrder[a.pos || 'MF'] || 9; const pB = posOrder[b.pos || 'MF'] || 9;
+          if (pA !== pB) return pA - pB; return String(a.name).localeCompare(String(b.name), 'ko-KR');
+        });
+      }
+
+      function renderAll() {
+        unregisteredData = sortByName(unregisteredData);
+        waitingData = sortByName(waitingData);
+        for(let i=0; i<teamsData.length; i++) teamsData[i] = sortByPosAndName(teamsData[i]);
+
+        let unregHtml = '';
+        unregisteredData.forEach((p, i) => {
+          const sName = escapeHtml(p.name);
+          unregHtml += `<div class="player-pill d-flex align-items-center justify-content-center px-2 py-2" draggable="true" ondragstart="drag(event, 'unregistered', null, ${i})" onclick="clickMove('unregistered', ${i})"><span class="text-truncate w-100 text-center" style="font-size:0.85rem;">+ ${sName}</span></div>`;
+        });
+        document.getElementById('unregPool').innerHTML = unregHtml || "<span class='text-muted small' style='grid-column: 1 / -1;'>모든 회원이 참가했습니다.</span>";
+
+        let waitHtml = '';
+        waitingData.forEach((p, i) => {
+          const safeUrl = safePhotoUrl(p.photoUrl);
+          const photo = safeUrl || './sublogo2.png';
+          const pos = escapeHtml(p.pos || 'MF');
+          const sName = escapeHtml(p.name);
+          const sOvr = escapeHtml(p.ovr);
+          const sUid = escapeHtml(p.userId);
+          // 대기열 선수: 탭하면 팀 선택 모달 (모바일 UX)
+          // 사진은 제외 + pill-waiting 클래스로 공간 최적화
+          waitHtml += `<div class="player-pill pill-waiting player-item-tappable d-flex align-items-center" draggable="true" ondragstart="drag(event, 'waiting', null, ${i})" onclick="handlePlayerTap(event, 'waiting', null, ${i})"><span class="pos-badge pos-${pos}">${pos}</span><span class="player-name">${sName}</span><span class="ovr-badge">${sOvr}</span><span class="edit-icon" onclick="event.stopPropagation(); openModal('${sUid}', ${i}, 'waiting')">⚙️</span></div>`;
+        });
+        document.getElementById('waitListContent').innerHTML = waitHtml || "<span class='text-muted small' style='grid-column: 1 / -1;'>대기 인원이 없습니다.</span>";
+        document.getElementById('waitCount').innerText = waitingData.length;
+
+        if (teamsData.length === 0) {
+          document.getElementById('teamResult').innerHTML = '<div style="grid-column: 1 / -1;"><div class="empty-alert">생성된 팀이 없습니다. [+ 팀 추가] 버튼을 눌러주세요.</div></div>';
+          updateStatusBar();
+          return;
+        }
+
+        let teamsHtml = '';
+        teamsData.forEach((team, tIdx) => {
+          const tColor = TEAM_COLORS[tIdx%TEAM_COLORS.length].border;
+          const tName = escapeHtml(TEAM_NAMES[tIdx] || ('TEAM '+(tIdx+1)));
+          let sumOvr = 0; team.forEach(p => sumOvr += (p.ovr||0));
+          const avgOvr = team.length ? Math.round(sumOvr/team.length) : 0;
+          
+          // OVR 바 채우기 비율 (50~90 범위를 0~100%로 매핑)
+          const ovrBarPct = Math.max(0, Math.min(100, ((avgOvr - 50) / 40) * 100));
+          
+          // 포지션별 인원 집계
+          const posCount = { FW: 0, MF: 0, DF: 0, GK: 0 };
+          team.forEach(p => {
+            const pos = p.pos || 'MF';
+            if (posCount[pos] !== undefined) posCount[pos]++;
+          });
+          let posSummaryHtml = '';
+          ['FW', 'MF', 'DF', 'GK'].forEach(pos => {
+            if (posCount[pos] > 0) {
+              posSummaryHtml += `<span class="pos-summary-chip chip-${pos}"><span class="pos-label">${pos}</span><span class="pos-count">${posCount[pos]}</span></span>`;
+            }
+          });
+          
+          // 유니폼 칩 (드롭다운 유지하되 더 깔끔하게)
+          const currentJerseyId = teamJerseys[tIdx] || '';
+          let jerseyChipHtml = '';
+          if (jerseyList.length > 0) {
+            let jerseyOptions = '<option value="">👕 유니폼 선택</option>';
+            jerseyList.forEach(j => {
+              const selected = j.id === currentJerseyId ? ' selected' : '';
+              jerseyOptions += `<option value="${escapeHtml(j.id)}"${selected}>${escapeHtml(j.name)}</option>`;
+            });
+            const selectedJersey = jerseyList.find(j => j.id === currentJerseyId);
+            const previewColor = selectedJersey ? selectedJersey.color : 'transparent';
+            const jerseyLabelColor = selectedJersey ? '' : 'team-jersey-chip-empty';
+            jerseyChipHtml = `
+              <div class="team-jersey-chip" style="padding:0; background:transparent; border:none; margin-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:6px; padding:5px 10px 5px 6px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; width:100%;">
+                  <div class="team-jersey-chip-dot" style="background:${previewColor};"></div>
+                  <select onchange="setTeamJersey(${tIdx}, this.value)" style="flex:1; font-size:11px; padding:2px; border:none; background:transparent; color:var(--text); min-width:0; outline:none; cursor:pointer;" class="${jerseyLabelColor}">${jerseyOptions}</select>
+                </div>
+              </div>
+            `;
+          }
+          
+          let lastPos = ''; let playersHtml = '';
+          team.forEach((p, i) => {
+            const safePos = p.pos || 'MF';
+            const sPosHtml = escapeHtml(safePos);
+            if (safePos !== lastPos) {
+              playersHtml += `<div class="w-100 mt-2 mb-1 text-muted fw-bold px-1" style="font-size:0.65rem; border-bottom:1px dashed var(--border); padding-bottom:2px;">[ ${sPosHtml} ]</div>`;
+              lastPos = safePos;
+            }
+            const safeUrl = safePhotoUrl(p.photoUrl);
+            const photo = safeUrl || './sublogo2.png';
+            const sName = escapeHtml(p.name);
+            const sOvr = escapeHtml(p.ovr);
+            const sUid = escapeHtml(p.userId);
+            // 선수 아이템: PC는 드래그, 모바일은 탭으로 이동 모달 오픈
+            playersHtml += `<div class="player-item player-item-tappable" draggable="true" ondragstart="drag(event, 'team', ${tIdx}, ${i})" onclick="handlePlayerTap(event, 'team', ${tIdx}, ${i})"><span class="pos-badge pos-${sPosHtml}">${sPosHtml}</span><img src="${escapeHtml(photo)}" class="player-img" style="object-fit:contain;"><div style="flex:1; min-width:0;" class="small fw-bold text-dark"><span style="overflow:hidden; text-overflow:ellipsis;">${sName}</span> <span class="text-muted fw-normal" style="font-size:0.7rem; margin-left:4px;">OVR ${sOvr}</span></div><span class="edit-icon" onclick="event.stopPropagation(); openModal('${sUid}', ${i}, 'team', ${tIdx})">⚙️</span><span class="remove-icon" onclick="event.stopPropagation(); moveToWait(${tIdx}, ${i})">X</span></div>`;
+          });
+          
+          // 팀 카드 전체 조립 (새 디자인)
+          teamsHtml += `
+            <div>
+              <div class="team-container" style="border-top: 4px solid ${tColor};" ondrop="drop(event, 'team', ${tIdx})" ondragover="allowDrop(event)">
+                <div class="team-header-row">
+                  <div class="team-header-left">
+                    <span class="team-dot" style="background:${tColor};"></span>
+                    <span class="team-name">${tName}</span>
+                  </div>
+                </div>
+                <div class="team-ovr-display">
+                  <div class="team-ovr-bar-wrap">
+                    <div class="team-ovr-bar-fill" style="width:${ovrBarPct}%;"></div>
+                  </div>
+                  <div class="team-ovr-value">${avgOvr}</div>
+                </div>
+                ${jerseyChipHtml}
+                ${posSummaryHtml ? `<div class="pos-summary">${posSummaryHtml}</div>` : ''}
+                ${playersHtml || '<div class="text-center text-muted small" style="padding:20px 0;">선수를 배정해주세요</div>'}
+              </div>
+            </div>
+          `;
+        });
+        document.getElementById('teamResult').innerHTML = teamsHtml;
+        updateStatusBar();
+      }
+
+      /* ═══════════════ 📊 상태 요약 바 업데이트 ═══════════════ */
+      // updateStatusBar는 renderAll() 내부 양쪽 return 경로에서 호출됨
+      function updateStatusBar() {
+        const assigned = flattenTeams().length;
+        const waiting = waitingData.length;
+        // 목표 인원 = 팀당 인원 × 팀 수 (매치 설정 기반)
+        const perTeam = (globalMatchData && globalMatchData.perTeam) || 0;
+        const totalTeams = teamsData.length || (globalMatchData && globalMatchData.totalTeams) || 0;
+        const target = perTeam * totalTeams;
+        
+        // 값이 실제로 바뀔 때만 pulse 애니메이션 트리거 (Phase 1 마이크로인터랙션)
+        const setWithPulse = (el, newVal) => {
+          if (!el) return;
+          const oldVal = el.textContent;
+          if (String(oldVal) !== String(newVal)) {
+            el.textContent = newVal;
+            el.classList.remove('pulse');
+            // reflow 강제해서 애니메이션 재생 보장
+            void el.offsetWidth;
+            el.classList.add('pulse');
+            setTimeout(() => el.classList.remove('pulse'), 400);
+          }
+        };
+        
+        setWithPulse(document.getElementById('statAssigned'), assigned);
+        setWithPulse(document.getElementById('statWaiting'), waiting);
+        setWithPulse(document.getElementById('statTarget'), target);
+        
+        // 대기 배지 + 미참여 카운트 배지도 함께 업데이트
+        setWithPulse(document.getElementById('waitCount'), waiting);
+        setWithPulse(document.getElementById('unregCount'), unregisteredData.length);
+      }
+      
+      /* ═══════════════ ▼ Collapsible 토글 ═══════════════ */
+      function toggleCollapse(key) {
+        const trigger = document.getElementById(key + 'Trigger');
+        const body = document.getElementById(key + 'Body');
+        if (!trigger || !body) return;
+        const isOpen = !trigger.classList.contains('is-open');
+        trigger.classList.toggle('is-open', isOpen);
+        body.classList.toggle('is-open', isOpen);
+      }
+
+      function clickMove(type, idx) { if(type==='unregistered') waitingData.push(unregisteredData.splice(idx,1)[0]); renderAll(); triggerSave(); }
+      function drag(ev, type, tIdx, pIdx) { ev.dataTransfer.setData("text/plain", JSON.stringify({type, tIdx, pIdx})); }
+      function allowDrop(ev) { ev.preventDefault(); }
+      function drop(ev, targetType, targetTIdx) {
+        ev.preventDefault(); const data = JSON.parse(ev.dataTransfer.getData("text/plain")); let p;
+        if(data.type==='unregistered') p=unregisteredData.splice(data.pIdx,1)[0];
+        else if(data.type==='waiting') p=waitingData.splice(data.pIdx,1)[0];
+        else p=teamsData[data.tIdx].splice(data.pIdx,1)[0];
+        if(targetType==='unregistered') unregisteredData.push(p);
+        else if(targetType==='waiting') waitingData.push(p);
+        else teamsData[targetTIdx].push(p);
+        renderAll(); triggerSave();
+      }
+      function moveToWait(tIdx, pIdx) { waitingData.push(teamsData[tIdx].splice(pIdx,1)[0]); renderAll(); triggerSave(); }
+      function flattenTeams() { let all=[]; teamsData.forEach(t => all = all.concat(t)); return all; }
+      
+      /* ═══════════ [Phase 3] 탭-투-이동 (모바일 친화 UX) ═══════════
+         선수 이름을 탭하면 모달이 열려서 이동할 팀/대기열 선택 가능
+         PC에서는 드래그&드롭과 공존 (편집 아이콘은 다른 동작)
+      ═══════════════════════════════════════════════════════════════ */
+      let _moveTarget = null; // { fromType, fromTIdx, fromPIdx, player }
+      
+      function handlePlayerTap(event, fromType, fromTIdx, fromPIdx) {
+        // 클릭 대상이 편집 아이콘이거나 X 버튼이면 무시 (stopPropagation으로 처리되지만 이중 방어)
+        const target = event.target;
+        if (target.closest('.edit-icon') || target.closest('.remove-icon')) return;
+        
+        // 대상 선수 정보 추출
+        let player;
+        if (fromType === 'waiting') player = waitingData[fromPIdx];
+        else if (fromType === 'team') player = teamsData[fromTIdx][fromPIdx];
+        else return;
+        if (!player) return;
+        
+        _moveTarget = { fromType, fromTIdx, fromPIdx, player };
+        
+        // 모달 타이틀 세팅
+        const titleEl = document.getElementById('movePlayerTitle');
+        if (titleEl) {
+          titleEl.textContent = escapeHtml(player.name) + ' 이동';
+        }
+        
+        // 이동 가능 대상 버튼 생성
+        const listEl = document.getElementById('moveTargetList');
+        if (!listEl) return;
+        
+        let html = '';
+        
+        // 1) 각 팀 버튼
+        teamsData.forEach((team, tIdx) => {
+          const tName = escapeHtml(TEAM_NAMES[tIdx] || ('TEAM ' + (tIdx + 1)));
+          const tColor = TEAM_COLORS[tIdx % TEAM_COLORS.length].border;
+          const isCurrent = fromType === 'team' && fromTIdx === tIdx;
+          html += `
+            <button class="move-target-btn${isCurrent ? ' current' : ''}" onclick="executePlayerMove('team', ${tIdx})">
+              <span class="move-target-btn-left">
+                <span class="team-dot" style="background:${tColor};"></span>
+                ${tName}${isCurrent ? ' (현재)' : ''}
+              </span>
+              <span class="move-target-btn-count">${team.length}명</span>
+            </button>
+          `;
+        });
+        
+        // 2) 대기열 버튼
+        const isWaitingCurrent = fromType === 'waiting';
+        html += `
+          <button class="move-target-btn${isWaitingCurrent ? ' current' : ''}" onclick="executePlayerMove('waiting', null)">
+            <span class="move-target-btn-left">
+              <svg class="btn-icon" viewBox="0 0 24 24" style="color: var(--amber);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              대기열${isWaitingCurrent ? ' (현재)' : ''}
+            </span>
+            <span class="move-target-btn-count">${waitingData.length}명</span>
+          </button>
+        `;
+        
+        // 3) 참가 취소 (미참여 회원으로 내리기) - 구분선 포함
+        html += `
+          <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+          <button class="move-target-btn" style="color:var(--red); border-color:rgba(255,71,87,0.25);" onclick="executePlayerMove('cancel', null)">
+            <span class="move-target-btn-left">
+              <svg class="btn-icon" viewBox="0 0 24 24" style="color: var(--red);"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              참가 취소 (미참여로)
+            </span>
+          </button>
+        `;
+        
+        listEl.innerHTML = html;
+        openSheet('movePlayerModal');
+      }
+      
+      async function executePlayerMove(targetType, targetTIdx) {
+        if (!_moveTarget) { closeModal('movePlayerModal'); return; }
+        const { fromType, fromTIdx, fromPIdx } = _moveTarget;
+        
+        // 같은 위치면 무시
+        if (fromType === targetType && fromTIdx === targetTIdx) {
+          closeModal('movePlayerModal');
+          return;
+        }
+        
+        // ═══ 참가 취소 (미참여로 내리기) 특수 처리 ═══
+        if (targetType === 'cancel') {
+          const p = fromType === 'waiting' 
+            ? waitingData[fromPIdx] 
+            : teamsData[fromTIdx][fromPIdx];
+          if (!p) { closeModal('movePlayerModal'); return; }
+          
+          closeModal('movePlayerModal');
+          
+          const ok = await showConfirm(
+            escapeHtml(p.name) + '님을 미참여 회원으로 되돌립니다.\n\n(나중에 미참여 목록에서 다시 추가 가능)',
+            { title: '참가 취소', danger: true, confirmText: '참가 취소' }
+          );
+          if (!ok) { _moveTarget = null; return; }
+          
+          // 원본에서 제거
+          if (fromType === 'waiting') waitingData.splice(fromPIdx, 1);
+          else if (fromType === 'team') teamsData[fromTIdx].splice(fromPIdx, 1);
+          
+          // 게스트가 아니면 unregisteredData(미참여)에 추가
+          // (게스트는 entries에만 존재하므로 재사용 불가 → 완전 삭제)
+          if (!p.isGuest && p.userId) {
+            unregisteredData.push({
+              name: p.name,
+              userId: p.userId,
+              pos: p.pos,
+              ovr: p.ovr,
+              photoUrl: p.photoUrl,
+              stats: p.stats,
+              isGuest: false
+            });
+          }
+          
+          _moveTarget = null;
+          renderAll();
+          triggerSave();
+          
+          if (p.isGuest) {
+            showToast(escapeHtml(p.name) + ' (게스트) 삭제됨', 'info');
+          } else {
+            showToast(escapeHtml(p.name) + ' 미참여 처리됨', 'success');
+          }
+          return;
+        }
+        
+        // ═══ 일반 이동 (팀 ↔ 대기열) ═══
+        // 원본에서 제거
+        let p;
+        if (fromType === 'waiting') p = waitingData.splice(fromPIdx, 1)[0];
+        else if (fromType === 'team') p = teamsData[fromTIdx].splice(fromPIdx, 1)[0];
+        
+        if (!p) { closeModal('movePlayerModal'); return; }
+        
+        // 목적지에 추가
+        if (targetType === 'waiting') waitingData.push(p);
+        else if (targetType === 'team') teamsData[targetTIdx].push(p);
+        
+        _moveTarget = null;
+        closeModal('movePlayerModal');
+        renderAll();
+        triggerSave();
+        showToast(escapeHtml(p.name) + ' 이동 완료', 'success');
+      }
+      
+      function autoDivide() {
+        let all = waitingData.concat(flattenTeams());
+        if(!all.length) { showToast("배정할 인원이 없습니다.", 'warning'); return; }
+        const num = teamsData.length; all.sort((a,b) => b.ovr - a.ovr);
+        teamsData = Array.from({length: num}, () => []);
+        let teamStats = Array.from({length: num}, () => ({cnt:0, ovr:0}));
+        for(let i=0; i<all.length; i+=num){
+          let grp = all.slice(i, i+num).sort(() => Math.random()-0.5);
+          grp.forEach(p => {
+            let minCnt = Math.min(...teamStats.map(ts => ts.cnt));
+            let cand = teamStats.map((ts, idx) => ({ts, idx})).filter(c => c.ts.cnt === minCnt);
+            cand.sort((a,b) => a.ts.ovr - b.ts.ovr); 
+            let best = cand[0].idx; teamsData[best].push(p); teamStats[best].cnt++; teamStats[best].ovr += p.ovr;
+          });
+        }
+        waitingData=[]; renderAll(); triggerSave();
+      }
+      
+      async function resetTeams() { 
+        if(!await showConfirm("모두 대기열로 이동하시겠습니까?", { title: '대기열로 초기화' })) return; 
+        waitingData = waitingData.concat(flattenTeams()); 
+        teamsData = Array.from({length: teamsData.length}, () => []); 
+        renderAll(); triggerSave(); 
+      }
+      function addGuest() { const n = document.getElementById('guestName').value.trim(); if(!n) return; waitingData.push({userId: 'GUEST-'+Date.now(), name:n, ovr:50, photoUrl:"", pos:'MF', stats:[50,50,50,50,50,50,50,50], isGuest:true}); document.getElementById('guestName').value=""; renderAll(); triggerSave(); }
+      async function addTeam() {
+        if(!await showConfirm("팀을 추가하시겠습니까?", { title: '팀 추가' })) return;
+        db.collection("matches").doc(GAME_ID).update({
+          totalTeams: firebase.firestore.FieldValue.increment(1)
+        }).then(() => {
+          teamsData.push([]);
+          renderAll(); triggerSave();
+        });
+      }
+
+      // ★ 새롭게 추가되는 팀 삭제 로직
+      async function removeTeam() {
+        if (teamsData.length <= 1) { showToast("최소 1개의 팀은 유지해야 합니다.", 'warning'); return; }
+        if (!await showConfirm("마지막 팀을 삭제하시겠습니까?\n해당 팀에 배정된 선수는 대기열로 이동합니다.", { title: '팀 삭제', danger: true, confirmText: '삭제' })) return;
+
+        db.collection("matches").doc(GAME_ID).update({
+          totalTeams: firebase.firestore.FieldValue.increment(-1)
+        }).then(() => {
+          const removedIdx = teamsData.length - 1; // 삭제될 팀 인덱스
+          const lastTeam = teamsData.pop(); // 마지막 팀 꺼내기
+          if (lastTeam && lastTeam.length > 0) {
+            waitingData = waitingData.concat(lastTeam); // 배정된 인원은 대기열로 합치기
+          }
+          // 삭제된 팀의 유니폼 배정도 제거
+          if (teamJerseys[removedIdx]) delete teamJerseys[removedIdx];
+          renderAll(); triggerSave();
+        }).catch(err => showToast("삭제 실패: " + err.message, 'error'));
+      }
+
+      function triggerSave() { document.getElementById('saveStatus').innerText = "저장 중..."; if(saveTimeout) clearTimeout(saveTimeout); saveTimeout = setTimeout(() => { executeSave(); }, 1000); }
+      function executeSave(cb) {
+        if (isSaving) return; isSaving = true;
+        const entriesRef = db.collection("matches").doc(GAME_ID).collection("entries");
+        entriesRef.get().then(snapshot => {
+          const batch = db.batch();
+          const activeIds = new Set();
+          const saveEntry = (p, teamLabel) => {
+            activeIds.add(p.userId);
+            const ref = entriesRef.doc(p.userId);
+            const data = { userId: p.userId, name: p.name, teamLabel: teamLabel, pos: p.pos, ovr: p.ovr, stats: p.stats, photoUrl: p.photoUrl, addedAt: p.addedAt || new Date(), active: true };
+            if (p.guestPw) data.guestPw = p.guestPw;
+            if (p.note) data.note = String(p.note).substring(0, 20);
+            batch.set(ref, data);
+          };
+          waitingData.forEach(p => saveEntry(p, "미정"));
+          teamsData.forEach((t, i) => { t.forEach(p => saveEntry(p, TEAM_NAMES[i])); });
+          snapshot.docs.forEach(doc => {
+            const entry = doc.data();
+            if (isActiveEntry(entry) && !activeIds.has(doc.id)) {
+              batch.update(doc.ref, { active: false, canceledAt: new Date().toISOString(), canceledBy: 'manager' });
+            }
+          });
+          // 팀별 유니폼 배정과 현재 참가 인원을 entries 저장과 같은 batch에서 갱신
+          batch.update(db.collection("matches").doc(GAME_ID), { 
+            teamJerseys: teamJerseys,
+            currentCount: waitingData.length + flattenTeams().length
+          });
+          return batch.commit();
+        }).then(() => {
+          isSaving = false; document.getElementById('saveStatus').innerText = "✅ 저장됨"; setTimeout(() => { document.getElementById('saveStatus').innerText = ""; }, 2000);
+          if(cb) cb();
+        }).catch(err => { isSaving = false; document.getElementById('saveStatus').innerText = "❌ 저장 실패"; });
+      }
+
+      let currentEditPlayer = null; 
+      function openModal(uid, pIdx, type, tIdx) {
+        currentEditPlayer = (type === 'waiting') ? waitingData[pIdx] : teamsData[tIdx][pIdx]; const p = currentEditPlayer;
+        document.getElementById('modalUserId').value = uid; document.getElementById('modalPlayerName').innerText = p.name; document.getElementById('m_pos').value = p.pos || 'MF'; 
+        const s = p.stats || [50,50,50,50,50,50,50,50];
+        document.getElementById('m_speed').value = s[0]; document.getElementById('m_shoot').value = s[1]; document.getElementById('m_pass').value = s[2]; document.getElementById('m_drib').value = s[3]; document.getElementById('m_def').value = s[4]; document.getElementById('m_phys').value = s[5]; document.getElementById('m_stamina').value = s[6]; document.getElementById('m_agility').value = s[7]; 
+        calcModalOvr(); openSheet('statModal'); 
+      }
+      function calcModalOvr() { let total = 0; ['m_speed','m_shoot','m_pass','m_drib','m_def','m_phys','m_stamina','m_agility'].forEach(id => { total += Number(document.getElementById(id).value); }); document.getElementById('m_ovr').innerText = Math.round(total/8); }
+      function saveStats() {
+        const statsArr = [ Number(document.getElementById('m_speed').value), Number(document.getElementById('m_shoot').value), Number(document.getElementById('m_pass').value), Number(document.getElementById('m_drib').value), Number(document.getElementById('m_def').value), Number(document.getElementById('m_phys').value), Number(document.getElementById('m_stamina').value), Number(document.getElementById('m_agility').value) ];
+        const pos = document.getElementById('m_pos').value, ovr = Number(document.getElementById('m_ovr').innerText);
+        currentEditPlayer.pos = pos; currentEditPlayer.stats = statsArr; currentEditPlayer.ovr = ovr;
+        renderAll(); closeModal('statModal'); triggerSave();
+        if (!currentEditPlayer.isGuest && currentEditPlayer.userId) { db.collection("users").doc(currentEditPlayer.userId).update({ pos: pos, stats: statsArr, ovr: ovr }); }
+      }
+
+      /* ═══════════════════════ 👕 유니폼 관리 ═══════════════════════ */
+      
+      // 유니폼 목록 실시간 구독 (페이지 로드 시 1회 호출)
+      function loadJerseysRealtime() {
+        db.collection("settings").doc("jerseys").onSnapshot((doc) => {
+          if (doc.exists && doc.data().list && Array.isArray(doc.data().list)) {
+            jerseyList = doc.data().list;
+          } else {
+            jerseyList = []; // 아직 설정 없음
+          }
+          renderJerseyListInModal();
+          renderAll(); // 팀 카드의 드롭다운 갱신
+        });
+      }
+      
+      // 유니폼 관리 모달 열기
+      function openJerseyModal() {
+        resetJerseyForm();
+        renderJerseyListInModal();
+        openSheet('jerseyModal');
+      }
+      
+      // 모달 내 유니폼 목록 렌더
+      function renderJerseyListInModal() {
+        const container = document.getElementById('jerseyList');
+        if (!container) return;
+        
+        if (!jerseyList.length) {
+          container.innerHTML = `
+            <div style="text-align:center; padding:20px; background:var(--bg3); border:1px dashed var(--border); border-radius:12px; color:var(--muted); font-size:12px;">
+              아직 등록된 유니폼이 없습니다.<br>아래에서 추가해주세요.
+            </div>
+            <button class="btn-admin-secondary" onclick="loadDefaultJerseys()" style="margin-top:4px;">🎨 기본 유니폼 4종 자동 추가</button>
+          `;
+          return;
+        }
+        
+        let html = '';
+        jerseyList.forEach((j) => {
+          const safeName = escapeHtml(j.name);
+          const safeColor = escapeHtml(j.color);
+          const safeId = escapeHtml(j.id);
+          html += `
+            <div style="display:flex; align-items:center; gap:10px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:10px 12px;">
+              <div style="width:28px; height:28px; border-radius:6px; background:${safeColor}; border:1px solid var(--border); flex-shrink:0;"></div>
+              <div style="flex:1; min-width:0; font-size:13px; font-weight:700; color:var(--text);">${safeName}</div>
+              <button class="btn-admin-outline" onclick="editJersey('${safeId}')" style="padding:4px 10px; font-size:11px;">수정</button>
+              <button class="btn-admin-outline btn-admin-danger" onclick="deleteJersey('${safeId}')" style="padding:4px 10px; font-size:11px;">삭제</button>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      }
+      
+      // 폼 초기화
+      function resetJerseyForm() {
+        document.getElementById('jerseyEditId').value = '';
+        document.getElementById('jerseyName').value = '';
+        document.getElementById('jerseyColor').value = '#00E676';
+        document.getElementById('jerseyColorHex').value = '#00E676';
+        document.getElementById('jerseyFormTitle').textContent = '+ 새 유니폼 추가';
+        document.getElementById('jerseySaveBtn').textContent = '저장';
+      }
+      
+      // 색상 피커와 hex 입력 동기화
+      document.addEventListener('DOMContentLoaded', function() {
+        const colorInput = document.getElementById('jerseyColor');
+        const hexInput = document.getElementById('jerseyColorHex');
+        if (colorInput && hexInput) {
+          colorInput.addEventListener('input', () => { hexInput.value = colorInput.value.toUpperCase(); });
+          hexInput.addEventListener('input', () => {
+            const val = hexInput.value.trim();
+            if (/^#[0-9A-Fa-f]{6}$/.test(val)) colorInput.value = val;
+          });
+        }
+      });
+      
+      // 유니폼 추가/수정 저장
+      async function saveJersey() {
+        const editId = document.getElementById('jerseyEditId').value;
+        const name = document.getElementById('jerseyName').value.trim();
+        const color = document.getElementById('jerseyColorHex').value.trim().toUpperCase();
+        
+        if (!name) { showToast('유니폼 이름을 입력해주세요.', 'warning'); return; }
+        if (!/^#[0-9A-F]{6}$/.test(color)) { showToast('색상은 #RRGGBB 형식이어야 합니다.', 'warning'); return; }
+        
+        // 중복 이름 체크
+        const duplicate = jerseyList.find(j => j.name === name && j.id !== editId);
+        if (duplicate) { showToast('이미 같은 이름의 유니폼이 있습니다.', 'warning'); return; }
+        
+        const btn = document.getElementById('jerseySaveBtn');
+        setButtonLoading(btn, true, '저장 중...');
+        
+        try {
+          let newList;
+          if (editId) {
+            // 수정
+            newList = jerseyList.map(j => j.id === editId ? { ...j, name: name, color: color } : j);
+          } else {
+            // 추가
+            const newId = 'j_' + Date.now();
+            newList = [...jerseyList, { id: newId, name: name, color: color }];
+          }
+          await db.collection("settings").doc("jerseys").set({ list: newList });
+          showToast(editId ? '유니폼이 수정되었습니다.' : '유니폼이 추가되었습니다.', 'success');
+          resetJerseyForm();
+          setButtonLoading(btn, false);
+        } catch (err) {
+          showToast('저장 실패: ' + err.message, 'error');
+          setButtonLoading(btn, false);
+        }
+      }
+      
+      // 유니폼 수정 (기존 값 로드)
+      function editJersey(jerseyId) {
+        const jersey = jerseyList.find(j => j.id === jerseyId);
+        if (!jersey) return;
+        document.getElementById('jerseyEditId').value = jersey.id;
+        document.getElementById('jerseyName').value = jersey.name;
+        document.getElementById('jerseyColor').value = jersey.color;
+        document.getElementById('jerseyColorHex').value = jersey.color;
+        document.getElementById('jerseyFormTitle').textContent = '✏️ 유니폼 수정';
+        document.getElementById('jerseySaveBtn').textContent = '수정 저장';
+      }
+      
+      // 유니폼 삭제
+      async function deleteJersey(jerseyId) {
+        const jersey = jerseyList.find(j => j.id === jerseyId);
+        if (!jersey) return;
+        
+        const ok = await showConfirm(
+          `"${jersey.name}" 유니폼을 삭제하시겠습니까?\n\n이 유니폼을 배정받은 팀이 있다면 자동으로 해제됩니다.`,
+          { title: '유니폼 삭제', danger: true, confirmText: '삭제' }
+        );
+        if (!ok) return;
+        
+        try {
+          const newList = jerseyList.filter(j => j.id !== jerseyId);
+          await db.collection("settings").doc("jerseys").set({ list: newList });
+          
+          // 현재 팀에 배정된 경우 해제 + DB 저장
+          let needsSave = false;
+          Object.keys(teamJerseys).forEach(tIdx => {
+            if (teamJerseys[tIdx] === jerseyId) {
+              delete teamJerseys[tIdx];
+              needsSave = true;
+            }
+          });
+          if (needsSave) { renderAll(); triggerSave(); }
+          
+          showToast('유니폼이 삭제되었습니다.', 'success');
+        } catch (err) {
+          showToast('삭제 실패: ' + err.message, 'error');
+        }
+      }
+      
+      // 기본 유니폼 4종 자동 추가
+      async function loadDefaultJerseys() {
+        try {
+          await db.collection("settings").doc("jerseys").set({ list: DEFAULT_JERSEYS });
+          showToast('기본 유니폼 4종이 추가되었습니다.', 'success');
+        } catch (err) {
+          showToast('추가 실패: ' + err.message, 'error');
+        }
+      }
+      
+      // 팀에 유니폼 배정 (드롭다운 onChange)
+      // 🔄 Swap 로직: 같은 유니폼을 쓰는 팀이 있으면 서로 맞교환
+      function setTeamJersey(tIdx, jerseyId) {
+        if (!jerseyId) {
+          // "👕 유니폼 선택" (빈 값) → 해당 팀 배정 해제
+          delete teamJerseys[tIdx];
+        } else {
+          // 같은 유니폼을 쓰는 다른 팀 찾기
+          let duplicateTeamIdx = -1;
+          Object.keys(teamJerseys).forEach(key => {
+            const keyIdx = Number(key);
+            if (keyIdx !== tIdx && teamJerseys[key] === jerseyId) {
+              duplicateTeamIdx = keyIdx;
+            }
+          });
+          
+          if (duplicateTeamIdx !== -1) {
+            // 🔄 Swap: 현재 팀의 기존 유니폼과 맞교환
+            const myOldJerseyId = teamJerseys[tIdx] || null;
+            teamJerseys[tIdx] = jerseyId;
+            if (myOldJerseyId) {
+              teamJerseys[duplicateTeamIdx] = myOldJerseyId;
+            } else {
+              // 현재 팀이 원래 유니폼 없었으면 → 상대 팀만 해제
+              delete teamJerseys[duplicateTeamIdx];
+            }
+            
+            // 토스트 알림
+            const myTeamName = TEAM_NAMES[tIdx] || ('팀' + (tIdx + 1));
+            const otherTeamName = TEAM_NAMES[duplicateTeamIdx] || ('팀' + (duplicateTeamIdx + 1));
+            if (myOldJerseyId) {
+              showToast(`👕 ${myTeamName} ↔ ${otherTeamName} 유니폼이 맞교환되었습니다`, 'success');
+            } else {
+              showToast(`👕 ${otherTeamName}의 유니폼이 해제되었습니다 (중복 방지)`, 'info');
+            }
+          } else {
+            // 중복 없음 → 그냥 배정
+            teamJerseys[tIdx] = jerseyId;
+          }
+        }
+        
+        renderAll();    // ✅ 즉시 UI 반영 (드롭다운 + 색상 미리보기 갱신)
+        triggerSave();  // Firestore 저장
+      }
+      
+      /* ═════════════════════════════════════════════════════════════════════════════ */
+
+      function openEndMatchModal() {
+        const all = flattenTeams(); if(!all.length) { showToast("배정된 인원이 없습니다.", 'warning'); return; }
+        let opt = '<option value="">선택 안 함</option>'; all.forEach(p => { opt += `<option value="${p.userId}" data-name="${p.name}">${p.name}</option>`; });
+        document.getElementById('awardMom').innerHTML = opt; document.getElementById('awardSecond').innerHTML = opt; document.getElementById('awardThird').innerHTML = opt;
+        let tOpt = '<option value="">우승팀 없음 (무승부 등)</option>'; teamsData.forEach((t, i) => { if(t.length) tOpt += `<option value="${i}">${TEAM_NAMES[i]}</option>`; }); document.getElementById('awardWinTeam').innerHTML = tOpt;
+        if(saveTimeout) { clearTimeout(saveTimeout); saveTimeout=null; executeSave(() => openSheet('endMatchModal')); } else openSheet('endMatchModal');
+      }
+
+      function executeEndMatch() {
+        const momId = document.getElementById('awardMom').value, secId = document.getElementById('awardSecond').value, thirdId = document.getElementById('awardThird').value, winTeamIdx = document.getElementById('awardWinTeam').value;
+        const momName = momId ? document.getElementById('awardMom').options[document.getElementById('awardMom').selectedIndex].text : '';
+        const secName = secId ? document.getElementById('awardSecond').options[document.getElementById('awardSecond').selectedIndex].text : '';
+        const thirdName = thirdId ? document.getElementById('awardThird').options[document.getElementById('awardThird').selectedIndex].text : '';
+        let winTeamIds = [], winTeamName = '';
+        if (winTeamIdx !== "") { winTeamName = TEAM_NAMES[winTeamIdx]; teamsData[winTeamIdx].forEach(p => { if (!p.isGuest) winTeamIds.push(p.userId); }); }
+
+        // ═══════════ 팀 구성 스냅샷 생성 ═══════════
+        // 매치 종료 시점의 팀/선수/유니폼을 그대로 저장 → 나중에 변경돼도 히스토리에 남음
+        const teamsSnapshot = [];
+        let totalParticipants = 0;
+        teamsData.forEach((team, tIdx) => {
+          if (!team.length) return;
+          const tName = TEAM_NAMES[tIdx] || ('TEAM ' + (tIdx + 1));
+          const tColor = TEAM_COLORS[tIdx % TEAM_COLORS.length].border;
+          let sumOvr = 0; team.forEach(p => sumOvr += (p.ovr || 0));
+          const avgOvr = team.length ? Math.round(sumOvr / team.length) : 0;
+          
+          // 유니폼 정보 (현재 배정된 것 + 당시 유니폼 세부정보 함께 저장)
+          const jerseyId = teamJerseys[tIdx] || '';
+          const jersey = jerseyList.find(j => j.id === jerseyId);
+          const jerseyInfo = jersey ? { id: jersey.id, name: jersey.name, color: jersey.color } : null;
+          
+          // 선수 정보 스냅샷
+          const players = team.map(p => ({
+            userId: p.userId || '',
+            name: p.name || '',
+            pos: p.pos || 'MF',
+            ovr: p.ovr || 50,
+            photoUrl: p.photoUrl || '',
+            isGuest: !!p.isGuest
+          }));
+          
+          totalParticipants += team.length;
+          teamsSnapshot.push({
+            teamIdx: tIdx,
+            name: tName,
+            color: tColor,
+            avgOvr: avgOvr,
+            jersey: jerseyInfo,
+            players: players,
+            isWinner: String(tIdx) === String(winTeamIdx)
+          });
+        });
+
+        const btn = document.querySelector("#endMatchModal .btn-end-match"); 
+        setButtonLoading(btn, true, '처리 중...');
+        const batch = db.batch();
+        batch.update(db.collection("matches").doc(GAME_ID), { status: "매치종료" });
+        
+        // matchHistory에 기존 필드 + teams 스냅샷 + 참가자 수 저장
+        batch.set(db.collection("matchHistory").doc(GAME_ID), { 
+          gameId: GAME_ID, 
+          date: new Date().toISOString(), 
+          location: globalMatchData.location || '', 
+          mom: momName, momId: momId, 
+          second: secName, secondId: secId, 
+          third: thirdName, thirdId: thirdId, 
+          winTeam: winTeamName,
+          teams: teamsSnapshot,
+          totalParticipants: totalParticipants
+        });
+        
+        if (momId && !momId.startsWith('GUEST')) batch.update(db.collection("users").doc(momId), { rankScore: firebase.firestore.FieldValue.increment(3), "awards.mom": firebase.firestore.FieldValue.increment(1) });
+        if (secId && !secId.startsWith('GUEST')) batch.update(db.collection("users").doc(secId), { rankScore: firebase.firestore.FieldValue.increment(2), "awards.sec": firebase.firestore.FieldValue.increment(1) });
+        if (thirdId && !thirdId.startsWith('GUEST')) batch.update(db.collection("users").doc(thirdId), { rankScore: firebase.firestore.FieldValue.increment(1), "awards.third": firebase.firestore.FieldValue.increment(1) });
+        winTeamIds.forEach(uid => { if (!uid.startsWith('GUEST')) batch.update(db.collection("users").doc(uid), { rankScore: firebase.firestore.FieldValue.increment(1) }); });
+
+        batch.commit()
+          .then(() => { 
+            showToast("매치가 종료되었습니다! 🏆", 'success');
+            closeModal('endMatchModal');
+            // 결과 카드 모달 자동 오픈 (공유 유도)
+            openResultCardModal({
+              location: globalMatchData.location || '상무풋살',
+              date: new Date(),
+              winTeamName: winTeamName,
+              momName: momName, momId: momId,
+              secName: secName, secId: secId,
+              thirdName: thirdName, thirdId: thirdId,
+              totalParticipants: totalParticipants,
+              totalTeams: teamsSnapshot.length
+            });
+          })
+          .catch(err => { showToast("오류: " + err.message, 'error'); setButtonLoading(btn, false); });
+      }
+      
+      /* ═══════════════════════ 📱 매치 결과 공유 카드 ═══════════════════════ */
+      
+      let _resultCardData = null;
+      
+      // 결과 카드 모달 열기 (매치 종료 직후 자동 호출)
+      function openResultCardModal(data) {
+        _resultCardData = data;
+        renderResultCard(data);
+        openSheet('resultCardModal');
+      }
+      
+      // 결과 카드 닫기 + 홈으로
+      function closeResultCardModal() {
+        closeModal('resultCardModal');
+        _resultCardData = null;
+        // 종료 후 모달을 닫으면 홈으로 이동
+        setTimeout(() => { window.location.href = 'index.html'; }, 300);
+      }
+      
+      // MOM 사진 가져오기 (없으면 sublogo2.png)
+      async function getMomPhotoUrl(momId) {
+        if (!momId || momId.startsWith('GUEST')) return './sublogo2.png';
+        try {
+          const doc = await db.collection("users").doc(momId).get();
+          if (doc.exists && doc.data().photoUrl) {
+            return doc.data().photoUrl;
+          }
+        } catch (e) { /* 무시하고 폴백 */ }
+        return './sublogo2.png';
+      }
+      
+      // 결과 카드 HTML 생성 + 렌더
+      async function renderResultCard(data) {
+        const container = document.getElementById('resultCardContainer');
+        if (!container) return;
+        
+        const d = data.date;
+        const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+        
+        const momPhotoUrl = await getMomPhotoUrl(data.momId);
+        const safePhotoUrl = escapeHtml(momPhotoUrl);
+        const safeLocation = escapeHtml(data.location);
+        const safeWinTeam = escapeHtml(data.winTeamName || '-');
+        const safeMom = escapeHtml(data.momName || '-');
+        const safeSec = escapeHtml(data.secName || '-');
+        const safeThird = escapeHtml(data.thirdName || '-');
+        
+        // MOM 이니셜 (사진 없을 때 백업)
+        const momInitial = data.momName ? data.momName.charAt(0) : '⚽';
+        
+        // 수상자 섹션 (MOM/2위/3위 중 있는 것만)
+        let podiumHtml = '';
+        if (data.momName) {
+          podiumHtml += `
+            <div style="display: flex; align-items: center; gap: 12px; background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.3); border-radius: 12px; padding: 10px; margin-top: 10px;">
+              <div style="width: 54px; height: 54px; border-radius: 50%; background: #051008; border: 2px solid #FFD700; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                <img src="${safePhotoUrl}" crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='./sublogo2.png';">
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; margin-bottom: 2px; font-weight: 900;">🥇 MAN OF THE MATCH</div>
+                <div style="font-size: 17px; font-weight: 900; color: #fff;">${safeMom}</div>
+              </div>
+            </div>
+          `;
+        }
+        
+        if (data.secName || data.thirdName) {
+          podiumHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">`;
+          if (data.secName) {
+            podiumHtml += `
+              <div style="background: rgba(192,192,192,0.08); border: 1px solid rgba(192,192,192,0.25); border-radius: 10px; padding: 8px 10px;">
+                <div style="font-size: 9px; color: #C0C0C0; letter-spacing: 1px; margin-bottom: 2px; font-weight: 900;">🥈 2ND</div>
+                <div style="font-size: 13px; font-weight: 900; color: #fff;">${safeSec}</div>
+              </div>
+            `;
+          } else {
+            podiumHtml += `<div></div>`;
+          }
+          if (data.thirdName) {
+            podiumHtml += `
+              <div style="background: rgba(205,127,50,0.08); border: 1px solid rgba(205,127,50,0.25); border-radius: 10px; padding: 8px 10px;">
+                <div style="font-size: 9px; color: #CD7F32; letter-spacing: 1px; margin-bottom: 2px; font-weight: 900;">🥉 3RD</div>
+                <div style="font-size: 13px; font-weight: 900; color: #fff;">${safeThird}</div>
+              </div>
+            `;
+          } else {
+            podiumHtml += `<div></div>`;
+          }
+          podiumHtml += `</div>`;
+        }
+        
+        // 우승팀 섹션 (있을 때만)
+        const winHtml = data.winTeamName ? `
+          <div style="background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3); border-radius: 12px; padding: 12px; margin-top: 14px; text-align: center;">
+            <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; margin-bottom: 4px; font-weight: 900;">🏆 CHAMPIONS</div>
+            <div style="font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 1px;">${safeWinTeam}</div>
+          </div>
+        ` : '';
+        
+        const cardHtml = `
+          <div id="resultCardCapture" style="width: 340px; background: linear-gradient(160deg, #0f1f15 0%, #051008 50%, #0a1a10 100%); border: 2px solid #00E676; border-radius: 18px; padding: 24px 20px; font-family: 'Noto Sans KR', 'Arial', sans-serif; box-sizing: border-box; color: #fff; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, #00E676, transparent);"></div>
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <img src="./mainlogo.png" crossorigin="anonymous" alt="FCMON" style="height: 24px; width: auto; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="display: none; align-items: center; gap: 6px;">
+                  <div style="width: 24px; height: 24px; background: #00E676; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; font-size: 13px;">⚽</div>
+                  <div style="font-weight: 900; font-size: 13px; letter-spacing: 2px; color: #00E676;">FCMON</div>
+                </div>
+              </div>
+              <div style="font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 1px;">MATCH REPORT</div>
+            </div>
+            
+            <div style="text-align: center; padding: 10px 0 14px; border-bottom: 1px dashed rgba(255,255,255,0.15);">
+              <div style="font-size: 11px; color: rgba(255,255,255,0.55); margin-bottom: 2px;">🏟 ${safeLocation}</div>
+              <div style="font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #fff;">${dateStr}</div>
+            </div>
+            
+            ${winHtml}
+            ${podiumHtml}
+            
+            <div style="display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.15); font-size: 11px; color: rgba(255,255,255,0.5);">
+              <div>👥 ${data.totalParticipants}명 참가</div>
+              <div style="width: 1px; height: 10px; background: rgba(255,255,255,0.2);"></div>
+              <div>⚽ ${data.totalTeams}개 팀</div>
+            </div>
+          </div>
+        `;
+        container.innerHTML = cardHtml;
+      }
+      
+      // 카드를 이미지로 변환 + 공유/다운로드
+      async function downloadResultCard() {
+        const captureEl = document.getElementById('resultCardCapture');
+        if (!captureEl) { showToast('카드를 찾을 수 없습니다', 'error'); return; }
+        
+        const btn = document.getElementById('shareCardBtn');
+        setButtonLoading(btn, true, '이미지 생성 중...');
+        
+        try {
+          // 폰트/이미지 로드 대기
+          if (document.fonts && document.fonts.ready) {
+            try { await document.fonts.ready; } catch(e){}
+          }
+          const imgs = captureEl.querySelectorAll('img');
+          await Promise.all(Array.from(imgs).map(img => {
+            if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+            return new Promise(r => {
+              img.onload = r; img.onerror = r;
+              setTimeout(r, 3000);
+            });
+          }));
+          await new Promise(r => setTimeout(r, 150));
+          
+          // html2canvas 실행
+          const canvas = await html2canvas(captureEl, {
+            backgroundColor: null,
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            allowTaint: false
+          });
+          
+          canvas.toBlob(async (blob) => {
+            if (!blob) { showToast('이미지 생성 실패', 'error'); setButtonLoading(btn, false); return; }
+            
+            const fileName = `FCMON_${(_resultCardData && _resultCardData.date ? _resultCardData.date.toISOString().slice(0,10) : 'match')}.png`;
+            
+            // Web Share API (모바일)
+            try {
+              const file = new File([blob], fileName, { type: 'image/png' });
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: 'FCMON 매치 결과' });
+                showToast('공유 완료!', 'success');
+                setButtonLoading(btn, false);
+                return;
+              }
+            } catch (err) {
+              if (err.name === 'AbortError') { setButtonLoading(btn, false); return; }
+              // 공유 실패 → 다운로드 폴백
+            }
+            
+            // 다운로드 폴백 (PC)
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            
+            showToast('이미지가 저장되었습니다', 'success');
+            setButtonLoading(btn, false);
+          }, 'image/png');
+        } catch (err) {
+          console.error(err);
+          showToast('이미지 생성 실패: ' + err.message, 'error');
+          setButtonLoading(btn, false);
+        }
+      }
+      
+      /* ═════════════════════════════════════════════════════════════════════════════ */
+
+      function showAllTeamsChart() {
+        let datasets = [];
+        teamsData.forEach((team, tIdx) => {
+          if(!team.length) return; let avgs = {s:0,sh:0,p:0,dr:0,de:0,ph:0,st:0,ag:0};
+          team.forEach(p => { const sArr = p.stats || [50,50,50,50,50,50,50,50]; avgs.s+=sArr[0]; avgs.sh+=sArr[1]; avgs.p+=sArr[2]; avgs.dr+=sArr[3]; avgs.de+=sArr[4]; avgs.ph+=sArr[5]; avgs.st+=sArr[6]; avgs.ag+=sArr[7]; });
+          let len = team.length; let dataArr = [Math.round(avgs.s/len),Math.round(avgs.sh/len),Math.round(avgs.p/len),Math.round(avgs.dr/len),Math.round(avgs.de/len),Math.round(avgs.ph/len),Math.round(avgs.st/len),Math.round(avgs.ag/len)];
+          datasets.push({label:TEAM_NAMES[tIdx], data:dataArr, backgroundColor:'transparent', borderColor:TEAM_COLORS[tIdx%TEAM_COLORS.length].border, pointBackgroundColor:TEAM_COLORS[tIdx%TEAM_COLORS.length].border, borderWidth:2});
+        });
+        if(datasets.length === 0) { showToast("팀원이 없습니다.", 'warning'); return; }
+        document.getElementById('chartTeamName').innerText = "전력 비교 차트";
+        if(radarChart) radarChart.destroy();
+        radarChart = new Chart(document.getElementById('teamRadarChart').getContext('2d'), { 
+          type:'radar', 
+          data:{labels:['속도','슈팅','패스','드리블','수비','피지컬','체력','민첩성'], datasets:datasets}, 
+          options:{ 
+            scales:{
+              r:{
+                min:0, max:100, 
+                ticks:{stepSize:20, color:'#8a9e8c', backdropColor:'transparent'},
+                grid:{color:'rgba(255,255,255,0.08)'},
+                angleLines:{color:'rgba(255,255,255,0.08)'},
+                pointLabels:{color:'#E8F5E9', font:{size:11, weight:'bold'}}
+              }
+            }, 
+            plugins:{legend:{position:'bottom', labels:{color:'#E8F5E9'}}} 
+          } 
+        });
+        openSheet('chartModal');
+      }
+
+      function copyKaTalk() {
+        let txt = "🏟️ FCMON 결과\n\n";
+        teamsData.forEach((t, i) => { 
+          if(!t.length) return;
+          txt += "[" + TEAM_NAMES[i] + "]";
+          // 유니폼 정보 추가
+          const jerseyId = teamJerseys[i] || '';
+          const jersey = jerseyList.find(j => j.id === jerseyId);
+          if (jersey) txt += " 👕 " + jersey.name;
+          txt += "\n";
+          let pNames = []; 
+          t.forEach(p => pNames.push("[" + (p.pos || 'MF') + "] " + p.name)); 
+          txt += pNames.join(', ') + "\n\n"; 
+        });
+        const el = document.createElement('textarea'); el.value = txt; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+        showToast("클립보드에 복사되었습니다!", 'success');
+      }
+
+// 카톡 복사 함수(copyKaTalk) 바로 아래에 이 함수를 추가하세요.
+      function copyGuestLink() {
+        // 현재 인터넷 주소에서 호스트 부분만 따와서 게스트 전용 링크 생성
+        const guestUrl = window.location.origin + '/register.html?gameId=' + GAME_ID + '&mode=guest';
+        const txt = "🏟️ FCMON 풋살 게스트 초대 🏟️\n\n아래 링크를 눌러 용병 참가를 신청해주세요!\n" + guestUrl;
+        
+        const el = document.createElement('textarea'); 
+        el.value = txt; 
+        document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+        showToast("게스트 초대 링크가 클립보드에 복사되었습니다!", 'success');
+      }
+    
+/* ★ PC 환경 고급 UX: 엔터 및 ESC 키 감지 시스템 ★ */
+  document.addEventListener('keydown', function(e) {
+    // 1. ESC 키를 누르면 열려있는 모든 팝업창 닫기
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-bg.show, .chart-modal-bg.show').forEach(function(el) {
+        el.classList.remove('show');
+      });
+      // 공지사항 팝업이 열려있다면 닫기
+      const popupOverlay = document.getElementById('popupOverlay');
+      if (popupOverlay && popupOverlay.style.display !== 'none') {
+        dismissPopup();
+      }
+    }
+    
+    // 2. 공지사항 팝업이 열려있을 때 '엔터'를 누르면 확인 버튼 효과
+    if (e.key === 'Enter') {
+      const popupOverlay = document.getElementById('popupOverlay');
+      if (popupOverlay && popupOverlay.style.display !== 'none') {
+        dismissPopup();
+      }
+    }
+  });
+   </script>
+  <!--
+════════════════════════════════════════════════════════════════════
+🎨 FCMON 공용 다이얼로그 라이브러리 v1.0
+각 페이지에 통째로 복사해서 넣으면 됩니다.
+════════════════════════════════════════════════════════════════════
+
+제공 API:
+  showToast(message, type)     - type: 'info' | 'success' | 'warning' | 'error'
+  await showConfirm(message, { title, confirmText, cancelText, danger })
+  await showPrompt(message, { title, type, placeholder, maxlength, defaultValue })
+
+사용 예:
+  showToast('저장되었습니다', 'success');
+  if (await showConfirm('삭제할까요?', { danger: true })) { ... }
+  const pw = await showPrompt('비밀번호:', { type: 'password', maxlength: 4 });
+-->
+
+<!-- ═══════════════════════ CSS ═══════════════════════ -->
+<style>
+  /* 토스트 시스템 - 화면 상단에 순차 표시 */
+  #fcm-toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+    width: 100%;
+    max-width: 400px;
+    padding: 0 16px;
+  }
+  .fcm-toast {
+    background: var(--bg2, #0f1510);
+    color: var(--text, #E8F5E9);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-left: 3px solid var(--green, #00E676);
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: fcm-toast-in 0.25s ease;
+    pointer-events: auto;
+    max-width: 100%;
+    word-break: keep-all;
+    line-height: 1.5;
+  }
+  .fcm-toast.is-leaving { animation: fcm-toast-out 0.2s ease forwards; }
+  .fcm-toast-success { border-left-color: var(--green, #00E676); }
+  .fcm-toast-warning { border-left-color: #FFCA28; }
+  .fcm-toast-error   { border-left-color: #FF4757; }
+  .fcm-toast-info    { border-left-color: #40C4FF; }
+  @keyframes fcm-toast-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fcm-toast-out {
+    to { opacity: 0; transform: translateY(-10px); }
+  }
+
+  /* 다이얼로그 (confirm/prompt 공용) - 화면 중앙 */
+  #fcm-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    backdrop-filter: blur(6px);
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #fcm-dialog-overlay.is-open { display: flex; }
+  .fcm-dialog-box {
+    background: var(--bg2, #0f1510);
+    width: 100%;
+    max-width: 360px;
+    border-radius: 22px;
+    padding: 26px 22px 22px;
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    animation: fcm-dialog-in 0.25s cubic-bezier(0.32, 1, 0.23, 1);
+  }
+  @keyframes fcm-dialog-in {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .fcm-dialog-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--green, #00E676);
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+  }
+  .fcm-dialog-title.is-danger { color: #FF4757; }
+  .fcm-dialog-message {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text, #E8F5E9);
+    white-space: pre-wrap;
+    word-break: keep-all;
+    margin-bottom: 18px;
+  }
+  .fcm-dialog-input {
+    width: 100%;
+    background: var(--bg3, #161d17);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-radius: 11px;
+    padding: 12px 15px;
+    color: var(--text, #E8F5E9);
+    font-family: inherit;
+    font-size: 16px;
+    outline: none;
+    -webkit-appearance: none;
+    margin-bottom: 18px;
+    transition: border-color 0.2s;
+  }
+  .fcm-dialog-input:focus { border-color: var(--green, #00E676); }
+  .fcm-dialog-input::placeholder { color: var(--muted, #5a6e5c); }
+  .fcm-dialog-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .fcm-dialog-btn {
+    flex: 1;
+    height: 46px;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    -webkit-appearance: none;
+    transition: 0.15s;
+  }
+  .fcm-dialog-btn:active { transform: scale(0.97); }
+  .fcm-dialog-btn-cancel {
+    background: transparent;
+    color: var(--muted2, #8a9e8c);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+  }
+  .fcm-dialog-btn-cancel:hover { background: var(--bg3, #161d17); }
+  .fcm-dialog-btn-confirm {
+    background: var(--green, #00E676);
+    color: #000;
+  }
+  .fcm-dialog-btn-confirm.is-danger {
+    background: #FF4757;
+    color: #fff;
+  }
+</style>
+
+<!-- ═══════════════════════ JS ═══════════════════════ -->
+<script>
+(function(){
+  /* 🔔 토스트 */
+  function ensureToastContainer() {
+    let c = document.getElementById('fcm-toast-container');
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'fcm-toast-container';
+      document.body.appendChild(c);
+    }
+    return c;
+  }
+  
+  window.showToast = function(message, type) {
+    const container = ensureToastContainer();
+    const el = document.createElement('div');
+    el.className = 'fcm-toast fcm-toast-' + (type || 'info');
+    el.textContent = message;
+    container.appendChild(el);
+    
+    // 자동 제거
+    const duration = (type === 'error' || type === 'warning') ? 3800 : 2800;
+    setTimeout(function(){
+      el.classList.add('is-leaving');
+      setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+    }, duration);
+  };
+  
+  /* 🔧 다이얼로그 공통 DOM 구성 */
+  function ensureDialogOverlay() {
+    let ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'fcm-dialog-overlay';
+      ov.innerHTML = '<div class="fcm-dialog-box">' +
+        '<div class="fcm-dialog-title" id="fcm-dialog-title"></div>' +
+        '<div class="fcm-dialog-message" id="fcm-dialog-message"></div>' +
+        '<input type="text" class="fcm-dialog-input" id="fcm-dialog-input" style="display:none;">' +
+        '<div class="fcm-dialog-actions">' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-cancel" id="fcm-dialog-cancel"></button>' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-confirm" id="fcm-dialog-confirm"></button>' +
+        '</div></div>';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+  
+  let dialogResolver = null;
+  
+  function closeDialog(result) {
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (ov) ov.classList.remove('is-open');
+    if (dialogResolver) {
+      const r = dialogResolver;
+      dialogResolver = null;
+      r(result);
+    }
+  }
+  
+  /* ✅ showConfirm - Promise<boolean> */
+  window.showConfirm = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '확인';
+    titleEl.classList.toggle('is-danger', !!opts.danger);
+    messageEl.textContent = message;
+    messageEl.style.display = '';
+    inputEl.style.display = 'none';
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.toggle('is-danger', !!opts.danger);
+    
+    cancelBtn.onclick = function(){ closeDialog(false); };
+    confirmBtn.onclick = function(){ closeDialog(true); };
+    
+    ov.classList.add('is-open');
+    confirmBtn.focus();
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* 📝 showPrompt - Promise<string|null> */
+  window.showPrompt = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '입력';
+    titleEl.classList.remove('is-danger');
+    messageEl.textContent = message;
+    messageEl.style.display = message ? '' : 'none';
+    
+    inputEl.style.display = '';
+    inputEl.type = opts.type || 'text';
+    inputEl.placeholder = opts.placeholder || '';
+    inputEl.value = opts.defaultValue || '';
+    if (opts.maxlength) inputEl.maxLength = opts.maxlength;
+    else inputEl.removeAttribute('maxlength');
+    if (opts.type === 'number' || (opts.maxlength === 4 && opts.type === 'password')) {
+      inputEl.inputMode = 'numeric';
+      inputEl.pattern = '[0-9]*';
+    } else {
+      inputEl.removeAttribute('inputmode');
+      inputEl.removeAttribute('pattern');
+    }
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.remove('is-danger');
+    
+    cancelBtn.onclick = function(){ closeDialog(null); };
+    confirmBtn.onclick = function(){ closeDialog(inputEl.value); };
+    inputEl.onkeydown = function(e){ 
+      if (e.key === 'Enter') { e.preventDefault(); closeDialog(inputEl.value); }
+    };
+    
+    ov.classList.add('is-open');
+    setTimeout(function(){ inputEl.focus(); }, 50);
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* ⌨️ 전역 키보드 - ESC로 다이얼로그 취소, 배경 클릭으로 취소 */
+  document.addEventListener('keydown', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.key === 'Escape') { closeDialog(null); }
+  });
+  
+  document.addEventListener('click', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.target === ov) { closeDialog(null); }
+  }, true);
+})();
+</script>
+
+<!--
+════════════════════════════════════════════════════════════════════
+🔄 FCMON Undo 토스트 확장 v1.0
+_dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
+
+사용 예:
+  showUndoToast('매치가 삭제되었습니다', () => {
+    // 되돌리기 콜백 - 여기서 복원 로직 실행
+    restoreMatch(savedData);
+  }, {
+    duration: 5000,        // 표시 시간 (ms)
+    label: '되돌리기'      // 버튼 텍스트
+  });
+════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* Undo 토스트 전용 스타일 */
+  .fcm-undo-toast {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 14px 14px 18px !important;
+    min-width: 280px;
+    max-width: 360px;
+  }
+  .fcm-undo-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text, #E8F5E9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fcm-undo-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--green, #00E676);
+    color: var(--green, #00E676);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.15s;
+    letter-spacing: -0.3px;
+  }
+  .fcm-undo-btn:hover, .fcm-undo-btn:active { 
+    background: var(--green, #00E676); 
+    color: #000;
+  }
+  /* 진행 상태 바 - 남은 시간 시각화 */
+  .fcm-undo-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--green, #00E676);
+    width: 100%;
+    transform-origin: left center;
+    animation: fcm-undo-countdown linear forwards;
+  }
+  @keyframes fcm-undo-countdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+  }
+  .fcm-undo-toast { position: relative; overflow: hidden; }
+</style>
+
+<script>
+(function(){
+  /* 🔄 showUndoToast - 실행 취소 가능한 토스트 */
+  /* 반환값: { commit: () => void, cancel: () => void } */
+  /*   commit(): 즉시 완료(토스트 닫고 완료 콜백 실행 안 함) */
+  /*   cancel(): 되돌리기 동작 (토스트 닫고 onUndo 콜백 실행) */
+  
+  window.showUndoToast = function(message, onUndo, opts) {
+    opts = opts || {};
+    const duration = opts.duration || 5000;
+    const label = opts.label || '되돌리기';
+    
+    // 컨테이너 확보 (showToast와 공유)
+    let container = document.getElementById('fcm-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'fcm-toast-container';
+      document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'fcm-toast fcm-toast-success fcm-undo-toast';
+    
+    const msgEl = document.createElement('div');
+    msgEl.className = 'fcm-undo-message';
+    msgEl.textContent = message;
+    
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fcm-undo-btn';
+    btn.textContent = label;
+    
+    const progress = document.createElement('div');
+    progress.className = 'fcm-undo-progress';
+    progress.style.animationDuration = duration + 'ms';
+    
+    toast.appendChild(msgEl);
+    toast.appendChild(btn);
+    toast.appendChild(progress);
+    container.appendChild(toast);
+    
+    let settled = false;
+    let timeoutId = null;
+    
+    function dismiss() {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+      toast.classList.add('is-leaving');
+      setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
+    }
+    
+    btn.onclick = function() {
+      if (settled) return;
+      try { if (onUndo) onUndo(); } 
+      catch(e) { console.error('[Undo] 되돌리기 오류:', e); }
+      dismiss();
+    };
+    
+    timeoutId = setTimeout(function() {
+      // 자동 소멸 - 되돌리기 호출 없이 그냥 토스트 닫힘
+      dismiss();
+    }, duration);
+    
+    return {
+      commit: function() { dismiss(); },
+      cancel: function() { btn.click(); }
+    };
+  };
+})();
+</script>
+
+</body>
+</html>

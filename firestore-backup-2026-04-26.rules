@@ -1,0 +1,384 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════
+// 🛡 FCMON Firestore Security Rules
+// ───────────────────────────────────────────────────────────────────
+// 설계 원칙:
+//   - Firebase Auth 미사용 환경 (동호회 편의성 우선)
+//   - 읽기는 공개, 쓰기는 필드별 엄격 검증
+//   - 민감 필드(masterPwHash, rankScore 등)는 Rules로 절대 방어
+//   - 데이터 타입/범위 검증으로 이상값 차단
+// ═══════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────
+    // 🔧 공통 헬퍼 함수
+    // ─────────────────────────────────────────────────────────────
+    
+    // 4자리 숫자 비밀번호 형식 검증 (유저 비번 / 매치 매니저 비번)
+    function isValidPw(pw) {
+      return pw is string && pw.size() == 4 && pw.matches('^[0-9]{4}$');
+    }
+
+    // SHA-256 hex 문자열 검증 (클라이언트는 새 비밀번호를 hash 필드로 저장)
+    function isValidSha256Hash(hash) {
+      return hash is string && hash.size() == 64 && hash.matches('^[a-f0-9]{64}$');
+    }
+
+    function isValidUserAuthCreate(data) {
+      return data.get('password', null) == '0000'
+        && isValidSha256Hash(data.get('passwordHash', null));
+    }
+
+    function isValidUserAuthUpdate() {
+      return (
+          request.resource.data.get('password', null) == resource.data.get('password', null)
+          && request.resource.data.get('passwordHash', null) == resource.data.get('passwordHash', null)
+        )
+        || (
+          request.resource.data.get('password', null) == '0000'
+          && isValidSha256Hash(request.resource.data.get('passwordHash', null))
+        );
+    }
+
+    function isUserAuthUnchanged() {
+      return request.resource.data.get('password', null) == resource.data.get('password', null)
+        && request.resource.data.get('passwordHash', null) == resource.data.get('passwordHash', null);
+    }
+
+    function isValidMatchAuthCreate(data) {
+      return data.get('adminPw', null) == '0000'
+        && isValidSha256Hash(data.get('adminPwHash', null));
+    }
+
+    function isValidMatchAuthUpdate() {
+      return (
+          request.resource.data.get('adminPw', null) == resource.data.get('adminPw', null)
+          && request.resource.data.get('adminPwHash', null) == resource.data.get('adminPwHash', null)
+        )
+        || (
+          request.resource.data.get('adminPw', null) == '0000'
+          && isValidSha256Hash(request.resource.data.get('adminPwHash', null))
+        );
+    }
+    
+    // 이름 형식 검증: 1~30자 문자열
+    function isValidName(name) {
+      return name is string && name.size() > 0 && name.size() <= 30;
+    }
+    
+    // OVR 검증: 0~99 정수
+    function isValidOvr(ovr) {
+      return ovr is int && ovr >= 0 && ovr <= 99;
+    }
+    
+    // 포지션 검증: FW / MF / DF / GK 중 하나
+    function isValidPos(pos) {
+      return pos is string && pos in ['FW', 'MF', 'DF', 'GK'];
+    }
+    
+    // 스탯 배열 검증: 정확히 8개의 0~99 정수
+    function isValidStats(stats) {
+      return stats is list && stats.size() == 8
+        && stats[0] is int && stats[0] >= 0 && stats[0] <= 99
+        && stats[1] is int && stats[1] >= 0 && stats[1] <= 99
+        && stats[2] is int && stats[2] >= 0 && stats[2] <= 99
+        && stats[3] is int && stats[3] >= 0 && stats[3] <= 99
+        && stats[4] is int && stats[4] >= 0 && stats[4] <= 99
+        && stats[5] is int && stats[5] >= 0 && stats[5] <= 99
+        && stats[6] is int && stats[6] >= 0 && stats[6] <= 99
+        && stats[7] is int && stats[7] >= 0 && stats[7] <= 99;
+    }
+    
+    // photoUrl 검증: 문자열 + 1MB 이하 (Firestore 문서 크기 한도 방어)
+    function isValidPhoto(url) {
+      return url == null || (url is string && url.size() <= 1048576);
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    // 📢 settings/system — 공지 & 마스터 해시
+    // ═════════════════════════════════════════════════════════════
+    match /settings/{docId} {
+      
+      // 읽기: 누구나 (전광판 공지 / 유니폼 목록 표시용)
+      allow read: if true;
+      
+      // 쓰기: masterPwHash는 어떤 클라이언트도 생성/변경 불가
+      // → Firebase Console에서만 직접 수정해야 함
+      // jerseys 등 다른 settings 문서는 자유 쓰기 허용
+      
+      // 최초 생성: masterPwHash 필드가 아예 없어야 함
+      allow create: if !('masterPwHash' in request.resource.data.keys());
+      
+      // 수정: masterPwHash 값이 바뀌지 않아야 함
+      allow update: if
+        !('masterPwHash' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // 삭제: 절대 불가 (공지/유니폼 문서 통째로 삭제 방지)
+      allow delete: if false;
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    // 👤 users/{userId} — 선수 정보
+    // ═════════════════════════════════════════════════════════════
+    match /users/{userId} {
+      
+      // 읽기: 누구나 (선수 목록/랭킹/출석률 표시)
+      // ⚠️ password/passwordHash 필드도 함께 노출됨 - Auth 없는 클라이언트 인증 구조의 한계
+      allow read: if true;
+      
+      // 생성: 필수 필드 + 형식 검증
+      // rankScore / awards는 반드시 기본값으로 시작
+      allow create: if
+        isValidName(request.resource.data.name)
+        && isValidUserAuthCreate(request.resource.data)
+        && isValidPos(request.resource.data.pos)
+        && isValidOvr(request.resource.data.ovr)
+        && isValidStats(request.resource.data.stats)
+        && isValidPhoto(request.resource.data.get('photoUrl', null))
+        // 생성 시점에는 rankScore 0, awards 초기값만 허용
+        && request.resource.data.get('rankScore', 0) == 0
+        && request.resource.data.get('awards', {mom:0, sec:0, third:0}).mom == 0
+        && request.resource.data.get('awards', {mom:0, sec:0, third:0}).sec == 0
+        && request.resource.data.get('awards', {mom:0, sec:0, third:0}).third == 0;
+      
+      // 수정: 세 가지 경우만 허용
+      // 1) 프로필 수정 (name, pos, ovr, stats, photoUrl, password)
+      //    - rankScore, awards는 변경 불가
+      // 2) 매치 종료 시상 (rankScore 증가, awards 카운트 증가)
+      //    - 다른 필드 변경 불가
+      // 3) 매치 기록 수정 (rankScore/awards 변경 - 감소 포함)
+      //    - 한 매치의 조정 범위 내에서만 (±4점, ±1 awards)
+      allow update: if
+        // 케이스 1: 일반 프로필 수정 (rankScore, awards 불변)
+        // 본인이 연락처/Instagram도 업데이트 가능 (매니저 관리용)
+        (
+          request.resource.data.rankScore == resource.data.rankScore
+          && request.resource.data.awards == resource.data.awards
+          && isValidName(request.resource.data.name)
+          && isValidUserAuthUpdate()
+          && isValidPos(request.resource.data.pos)
+          && isValidOvr(request.resource.data.ovr)
+          && isValidStats(request.resource.data.stats)
+          && isValidPhoto(request.resource.data.get('photoUrl', null))
+          // 연락처/SNS 길이 제한 (악의적 대량 입력 방지)
+          && request.resource.data.get('contact', '') is string
+          && request.resource.data.get('contact', '').size() <= 50
+          && request.resource.data.get('instagram', '') is string
+          && request.resource.data.get('instagram', '').size() <= 50
+          // memo는 본인이 바꿀 수 없음 (기존 값 유지)
+          && request.resource.data.get('memo', '') == resource.data.get('memo', '')
+          // status도 본인은 못 바꿈
+          && request.resource.data.get('status', 'active') == resource.data.get('status', 'active')
+        )
+        // 케이스 2: 매치 종료 시상 (score/awards 증가만)
+        || (
+          request.resource.data.name == resource.data.name
+          && isUserAuthUnchanged()
+          && request.resource.data.pos == resource.data.pos
+          && request.resource.data.ovr == resource.data.ovr
+          && request.resource.data.stats == resource.data.stats
+          && request.resource.data.get('photoUrl', null) == resource.data.get('photoUrl', null)
+          // rankScore는 증가만 허용 (최대 10점씩 - 한 매치 최대치 MOM+승리팀 = 4점이지만 여유)
+          && request.resource.data.rankScore >= resource.data.rankScore
+          && request.resource.data.rankScore <= resource.data.rankScore + 10
+          // awards도 증가만 허용
+          && request.resource.data.awards.mom >= resource.data.awards.mom
+          && request.resource.data.awards.sec >= resource.data.awards.sec
+          && request.resource.data.awards.third >= resource.data.awards.third
+          && request.resource.data.awards.mom <= resource.data.awards.mom + 1
+          && request.resource.data.awards.sec <= resource.data.awards.sec + 1
+          && request.resource.data.awards.third <= resource.data.awards.third + 1
+        )
+        // 케이스 3: 매치 기록 수정 (score/awards 감소 포함, ±4 범위)
+        // 한 매치 최대 보정: MOM취소(-3) + 우승팀취소(-1) = -4, 역으로 +4
+        // awards는 한 번에 ±1만 (한 매치 단위 보정)
+        || (
+          request.resource.data.name == resource.data.name
+          && isUserAuthUnchanged()
+          && request.resource.data.pos == resource.data.pos
+          && request.resource.data.ovr == resource.data.ovr
+          && request.resource.data.stats == resource.data.stats
+          && request.resource.data.get('photoUrl', null) == resource.data.get('photoUrl', null)
+          // rankScore 변경 범위: -4 ~ +4
+          && request.resource.data.rankScore >= resource.data.rankScore - 4
+          && request.resource.data.rankScore <= resource.data.rankScore + 4
+          && request.resource.data.rankScore >= 0
+          // awards 변경 범위: 각 필드 ±1
+          && request.resource.data.awards.mom >= resource.data.awards.mom - 1
+          && request.resource.data.awards.mom <= resource.data.awards.mom + 1
+          && request.resource.data.awards.sec >= resource.data.awards.sec - 1
+          && request.resource.data.awards.sec <= resource.data.awards.sec + 1
+          && request.resource.data.awards.third >= resource.data.awards.third - 1
+          && request.resource.data.awards.third <= resource.data.awards.third + 1
+          && request.resource.data.awards.mom >= 0
+          && request.resource.data.awards.sec >= 0
+          && request.resource.data.awards.third >= 0
+        )
+        // 케이스 4: 매니저 회원 관리 (status, memo, contact 등 변경)
+        // 핵심 필드(rankScore, awards, password)는 불변
+        // status는 'active', 'inactive', 'retired' 중 하나
+        // ⚠️ 실제 마스터 인증은 클라이언트에서 수행 (Auth 없는 구조의 한계)
+        || (
+          // 불변 필드 검증
+          request.resource.data.name == resource.data.name
+          && isUserAuthUnchanged()
+          && request.resource.data.pos == resource.data.pos
+          && request.resource.data.ovr == resource.data.ovr
+          && request.resource.data.stats == resource.data.stats
+          && request.resource.data.get('photoUrl', null) == resource.data.get('photoUrl', null)
+          && request.resource.data.rankScore == resource.data.rankScore
+          && request.resource.data.awards == resource.data.awards
+          // status 유효성 (있는 경우)
+          && request.resource.data.get('status', 'active') in ['active', 'inactive', 'retired']
+          // 문자열 필드 길이 제한 (악의적 대량 입력 방지)
+          && request.resource.data.get('memo', '') is string
+          && request.resource.data.get('memo', '').size() <= 500
+          && request.resource.data.get('contact', '') is string
+          && request.resource.data.get('contact', '').size() <= 50
+          && request.resource.data.get('instagram', '') is string
+          && request.resource.data.get('instagram', '').size() <= 50
+        );
+      
+      // 삭제: 절대 불가 (선수 데이터 보호)
+      allow delete: if false;
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    // 🔒 userSecrets/{userId}, matchSecrets/{gameId}
+    // 비밀번호 해시는 Cloud Functions(Admin SDK)만 접근한다.
+    // ═════════════════════════════════════════════════════════════
+    match /userSecrets/{userId} {
+      allow read, write: if false;
+    }
+
+    match /matchSecrets/{gameId} {
+      allow read, write: if false;
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    // ⚽ matches/{gameId} — 매치 정보
+    // ═════════════════════════════════════════════════════════════
+    match /matches/{gameId} {
+      
+      // 읽기: 누구나
+      allow read: if true;
+      
+      // 생성: 필수 필드 + 형식 검증
+      allow create: if
+        request.resource.data.gameId is string
+        && isValidName(request.resource.data.location)
+        && isValidMatchAuthCreate(request.resource.data)
+        && request.resource.data.perTeam is int
+        && request.resource.data.perTeam > 0
+        && request.resource.data.perTeam <= 20
+        && request.resource.data.totalTeams is int
+        && request.resource.data.totalTeams > 0
+        && request.resource.data.totalTeams <= 10
+        && request.resource.data.dateTime is string
+        && request.resource.data.status in ['모집중', '매치종료'];
+      
+      // 수정: adminPw, dateTime, location 등 수정 가능 (매니저 기능)
+      // gameId만 불변
+      allow update: if
+        request.resource.data.gameId == resource.data.gameId
+        && isValidName(request.resource.data.location)
+        && isValidMatchAuthUpdate()
+        && request.resource.data.status in ['모집중', '매치종료'];
+      
+      // 삭제: 불가
+      // 매치 삭제는 deletedAt 필드로 숨김 처리하고, 원본 문서/하위 entries는 보존한다.
+      allow delete: if false;
+
+
+      // ───────────────────────────────────────────────────────────
+      // 📋 matches/{gameId}/entries/{entryId} — 참가자 명단
+      // ───────────────────────────────────────────────────────────
+      match /entries/{entryId} {
+        
+        allow read: if true;
+        
+        // 생성/수정: 필수 필드 + 형식 검증
+        allow create, update: if
+          request.resource.data.userId is string
+          && isValidName(request.resource.data.name)
+          && request.resource.data.teamLabel is string
+          && isValidPos(request.resource.data.pos)
+          && isValidOvr(request.resource.data.ovr)
+          && isValidPhoto(request.resource.data.get('photoUrl', null))
+          && request.resource.data.get('note', '') is string
+          && request.resource.data.get('note', '').size() <= 20;
+        
+        // 삭제: 불가
+        // 참가 취소는 active:false + canceledAt 필드로 처리한다.
+        allow delete: if false;
+      }
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    // 📝 deletionLogs/{logId} — 매치 삭제 이력 (추적/감사용)
+    // 자동 만료: expireAt 필드로 30일 후 Firestore TTL이 자동 삭제
+    // ═════════════════════════════════════════════════════════════
+    match /deletionLogs/{logId} {
+      
+      // 읽기: 누구나 (매니저가 확인 가능)
+      allow read: if true;
+      
+      // 생성: 필수 필드만 확인 (로그이므로 자유롭게)
+      allow create: if
+        request.resource.data.gameId is string
+        && request.resource.data.deletedAt is string;
+      
+      // 수정: 불가 (로그 무결성 보장)
+      allow update: if false;
+      
+      // 삭제: 클라이언트에서 불가
+      // 만료 정리는 Firestore TTL 정책에 맡긴다.
+      allow delete: if false;
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    // 🏆 matchHistory/{gameId} — 종료된 매치 기록
+    // ═════════════════════════════════════════════════════════════
+    match /matchHistory/{gameId} {
+      
+      // 읽기: 누구나 (랭킹 페이지에서 표시)
+      allow read: if true;
+      
+      // 생성: 매치 종료 시에만
+      allow create: if
+        request.resource.data.date is string
+        && request.resource.data.gameId is string
+        && isValidName(request.resource.data.location);
+      
+      // 수정: 수상 관련 필드만 가능 (매치 기록 수정 기능)
+      // 불변 필드: gameId, date, location, teams, totalParticipants
+      // 변경 가능: mom, momId, second, secondId, third, thirdId, winTeam
+      allow update: if
+        request.resource.data.gameId == resource.data.gameId
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.location == resource.data.location
+        && request.resource.data.get('teams', []) == resource.data.get('teams', [])
+        && request.resource.data.get('totalParticipants', 0) == resource.data.get('totalParticipants', 0);
+      
+      // 삭제: 불가
+      allow delete: if false;
+    }
+
+
+    // ═════════════════════════════════════════════════════════════
+    // 🚫 기본 거부 — 위에서 명시되지 않은 모든 경로는 차단
+    // ═════════════════════════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

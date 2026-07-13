@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FCMON - 메인</title>
+  
+  <link rel="icon" type="image/png" href="./icon-512.png?v=3">
+  <link rel="shortcut icon" href="./icon-512.png?v=3">
+  <link rel="apple-touch-icon" href="./icon-512.png?v=3">
+  <meta name="apple-mobile-web-app-title" content="FCMON">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./common.css">
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+  <style>
+    /* 페이지 전용 스타일만 남김 (공통 토큰/리셋/폰트/접근성/스피너는 common.css에서 로드) */
+    body { overflow-x: hidden; }
+    /* index 전용 확장 그라디언트 (두 곳에서 빛) */
+    body::before {
+      content:'';
+      position:fixed;
+      inset:0;
+      background: radial-gradient(ellipse 60% 40% at 80% 5%, rgba(0,230,118,0.05) 0%, transparent 70%),
+                  radial-gradient(ellipse 40% 30% at 10% 80%, rgba(0,230,118,0.03) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .container{width:100%;max-width:480px;margin:0 auto;padding:0 16px 110px;position:relative;z-index:1}
+    
+    .header{display:flex;align-items:center;justify-content:space-between;padding:22px 0 14px}
+    .top-logo-img{height:35px;width:auto;object-fit:contain}
+/* 심플한 앱 설치(다운로드) 아이콘 버튼 */
+    .btn-install-icon { background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; outline: none; -webkit-appearance: none; transition: 0.2s; }
+    .btn-install-icon:active { color: var(--green); transform: scale(0.9); }
+    
+    .notice-container{width:100%;background:rgba(255,71,87,0.05);border-top:1px solid rgba(255,71,87,0.2);border-bottom:1px solid rgba(255,71,87,0.2);overflow:hidden;white-space:nowrap;padding:9px 0;margin-bottom:22px;position:relative;cursor:pointer;}
+    .notice-track{display:inline-flex;animation:marqueeScroll linear infinite}
+    .notice-text{color:var(--red);font-weight:700;font-size:13px;padding-right:80px;flex-shrink:0;}
+    @keyframes marqueeScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    
+    .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .section-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+    .section-badge{font-size:11px;color:var(--muted2)}
+    
+    .match-list{display:flex;flex-direction:column;gap:10px}
+    .match-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;overflow:hidden}
+    .match-card:active{transform:scale(0.985);border-color:var(--border-hover)}
+    .match-card::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--green);transition:background .3s}
+    .match-card.status-soon::before{background:var(--amber)}
+    .match-card.status-live::before{background:var(--blue)}
+    .match-card.status-done::before{background:var(--muted)}
+    .match-card::after { content:''; position:absolute; top:-20px; right:-20px; width:130px; height:130px; background-image:url('./sublogo2.png'); background-size:contain; background-repeat:no-repeat; background-position:center; opacity:0.08; pointer-events:none; z-index:0; }
+    
+    .card-top, .match-date, .card-bottom{position:relative; z-index:1;}
+    .card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+    .match-loc{font-size:17px;font-weight:900;color:var(--text);line-height:1.2;padding-right:8px}
+    
+    /* ★ 통합된 일체형 배지 및 오버플로 해결 디자인 */
+    .status-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:900;flex-shrink:0; white-space: normal; /* 모달 밖으로 삐져나가는 버그 해결: 줄바꿈 허용 */}
+    .status-badge .dot{width:6px;height:6px;border-radius:50%;animation:pulse 1.8s ease-in-out infinite; flex-shrink: 0;}
+    .status-time{font-weight:500;opacity:0.75;padding-left:6px;border-left:1px solid currentColor; display: inline-block; white-space: normal; /* 시간 텍스트 줄바꿈 허용 */}
+    
+    .badge-open{background:var(--status-open-bg);color:var(--status-open-color);border:1px solid rgba(0,230,118,0.2)}
+    .badge-open .dot{background:var(--status-open-color)}
+    .badge-soon{background:var(--status-soon-bg);color:var(--status-soon-color);border:1px solid rgba(255,202,40,0.2)}
+    .badge-soon .dot{background:var(--status-soon-color)}
+    .badge-live{background:var(--status-live-bg);color:var(--status-live-color);border:1px solid rgba(64,196,255,0.25)}
+    .badge-live .dot{background:var(--status-live-color)}
+    .badge-done{background:var(--status-done-bg);color:var(--status-done-color);border:1px solid rgba(255,255,255,0.06)}
+    .badge-done .dot{background:var(--status-done-color);animation:none}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+    
+    .match-date{font-size:12px;color:var(--muted2);margin-bottom:14px;display:flex;align-items:center;gap:5px}
+    .card-bottom{display:flex;align-items:center;justify-content:space-between}
+    .capacity-wrap{display:flex;align-items:center;gap:10px}
+    .capacity-bar-track{width:80px;height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden}
+    .capacity-bar-fill{height:100%;border-radius:3px;background:var(--green);transition:width .6s ease}
+    .capacity-bar-fill.soon{background:var(--amber)}
+    .capacity-bar-fill.full{background:var(--red)}
+    .capacity-text{font-size:12px;color:var(--muted2);font-weight:500}
+    .capacity-count{font-size:13px;font-weight:700;color:var(--text)}
+    
+    /* ★ 심플해진 휴지통 아이콘 */
+    .btn-delete-match{background:transparent;color:var(--muted);border:none;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;flex-shrink:0;}
+    .match-card:hover .btn-delete-match{color:var(--muted2);}
+    .btn-delete-match:hover, .btn-delete-match:active{background:rgba(255,71,87,0.1);color:var(--red) !important;}
+    
+    .empty-state{text-align:center;padding:56px 20px}
+    .empty-icon{font-size:48px;margin-bottom:16px;opacity:.5}
+    .empty-title{font-size:16px;font-weight:700;color:var(--muted2);margin-bottom:8px}
+    .empty-sub{font-size:12px;color:var(--muted);margin-bottom:24px;line-height:1.6}
+    .empty-cta-btn{
+      display:inline-flex;align-items:center;gap:8px;
+      background:linear-gradient(135deg,var(--green),#00c76a);
+      color:#000;border:none;border-radius:14px;
+      padding:14px 28px;font-size:15px;font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 6px 20px rgba(0,230,118,0.3);
+      transition:transform 0.15s ease, box-shadow 0.2s ease;
+    }
+    @media (hover:hover){
+      .empty-cta-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,230,118,0.4);}
+    }
+    .empty-cta-btn:active{transform:scale(0.97);}
+    .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--card) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:18px;margin-bottom:10px}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    
+    /* 모달 계급도(z-index) 완벽 정리 */
+    /* 모달 기본 (모바일): 바텀시트 */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+    .modal-bg.show{display:flex}
+    .modal-content{background:var(--bg2);width:100%;max-width:480px;border-radius:24px 24px 0 0;padding:20px 20px 36px;border:1px solid var(--border);border-bottom:none;transform:translateY(100%);transition:transform .3s;max-height:92vh;overflow-y:auto}
+    .modal-bg.show .modal-content{transform:translateY(0)}
+    .modal-pill{width:36px;height:4px;background:var(--border-hover);border-radius:2px;margin:0 auto 20px}
+    
+    /* 모달 반응형 (768px 이상 PC/태블릿): 중앙 팝업 */
+    @media (min-width: 768px) {
+      .modal-bg{align-items:center;padding:20px}
+      .modal-content{border-radius:24px;padding:24px 20px;border-bottom:1px solid var(--border);transform:scale(0.95);opacity:0;transition:transform .25s cubic-bezier(0.32, 1, 0.23, 1), opacity .25s;max-height:88vh}
+      .modal-bg.show .modal-content{transform:scale(1);opacity:1}
+      .modal-pill{display:none}
+    }
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .modal-title{font-size:17px;font-weight:900;color:var(--green)}
+    
+    /* 통일된 닫기 버튼 */
+    .modal-close{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;outline:none;-webkit-appearance:none;}
+    
+    .form-group{margin-bottom:14px}
+    .form-label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:7px;}
+    .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;box-sizing:border-box;}
+    /* iOS Safari date/datetime-local input 박스 오버플로 방지 */
+    input[type="date"].form-input,
+    input[type="datetime-local"].form-input,
+    input[type="time"].form-input{
+      display:block;
+      width:100%;
+      min-height:44px;
+      text-align:left;
+    }
+    /* iOS Safari date input 내부 placeholder 텍스트 정렬 */
+    input[type="date"]::-webkit-date-and-time-value,
+    input[type="datetime-local"]::-webkit-date-and-time-value{
+      text-align:left;
+    }
+    .form-row{display:flex;gap:10px}
+    .btn-modal-submit{width:100%;height:50px;background:var(--green);color:#000;border:none;border-radius:12px;font-weight:900;font-size:15px;cursor:pointer;margin-top:6px}
+    
+    /* 팝업 공지 (최상위 z-index) */
+    #popupOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:4000;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+    .popup-box{background:var(--bg2);width:90%;max-width:400px;border-radius:22px;padding:28px 22px;border:1px solid rgba(0,230,118,0.25);text-align:center;animation:popupIn .3s ease}
+    @keyframes popupIn{from{opacity:0;transform:scale(.92) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+    .guide-modal-content{background:var(--bg2);width:90%;max-width:400px;border-radius:20px;padding:24px;border:1px solid var(--border);text-align:center;}
+    .guide-step{background:var(--bg3);border-radius:12px;padding:16px;margin-bottom:12px;text-align:left;border:1px solid rgba(255,255,255,0.05);}
+    .guide-os{font-size:14px;font-weight:900;color:var(--green);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+    
+    /* 제작자 정보 모달 전용: 모든 화면에서 중앙 배치 + 팝업 */
+    #installGuideModal{align-items:center !important; padding:20px;}
+    #installGuideModal .guide-modal-content{
+      transform:scale(0.9);
+      opacity:0;
+      transition:transform .25s cubic-bezier(0.32, 1, 0.23, 1), opacity .25s;
+      max-height:88vh;
+      overflow-y:auto;
+    }
+    #installGuideModal.show .guide-modal-content{
+      transform:scale(1);
+      opacity:1;
+    }
+
+    /* ─── FAB 좌측 하단 고정 + 세로 메뉴 ─── */
+    /* 컨테이너(max-width:480px)의 좌측에 맞춰 정렬 */
+    .fab-wrapper {
+      position: fixed; 
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      /* 기본(모바일 & 좁은 화면): 화면 좌측 기준 */
+      left: 16px;
+      z-index: 100;
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      pointer-events: none;
+    }
+    /* PC/태블릿: 컨테이너 좌측 끝에 맞춰 정렬 */
+    /* 화면 폭이 컨테이너 최대 폭(480px) + 여유(32px)보다 크면 적용 */
+    @media (min-width: 512px) {
+      .fab-wrapper {
+        left: 50%;
+        /* 컨테이너 중앙(50%)에서 좌측으로 240px 이동 + 16px 여백 */
+        margin-left: calc(-240px + 16px);
+      }
+    }
+    .fab-toggle-btn {
+      pointer-events: auto; 
+      width: 56px; height: 56px; 
+      border-radius: 50%; 
+      background: linear-gradient(135deg, #00E676, #00C853);
+      color: #000; border: none; cursor: pointer; 
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,230,118,0.4); 
+      transition: all 0.3s cubic-bezier(0.32, 1, 0.23, 1); 
+      outline: none;
+      order: 2; /* 메뉴가 위, 토글이 아래 */
+    }
+    .fab-wrapper.open .fab-toggle-btn { 
+      transform: rotate(135deg); 
+      background: #333; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+      color: #fff; 
+    }
+    
+    /* 세로 메뉴 컨테이너 */
+    .fab-expand-menu {
+      pointer-events: none; 
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      opacity: 0; 
+      transform: translateY(12px) scale(0.95); 
+      transition: all 0.28s cubic-bezier(0.32, 1, 0.23, 1);
+      order: 1;
+    }
+    .fab-wrapper.open .fab-expand-menu { 
+      opacity: 1; 
+      transform: translateY(0) scale(1); 
+      pointer-events: auto;
+    }
+    
+    /* 메뉴 아이템 공통: 가로로 넓고 일관된 크기 */
+    .fab-btn-primary, 
+    .fab-btn-secondary { 
+      min-width: 160px;
+      height: 46px;
+      padding: 0 22px;
+      border-radius: 23px;
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap; 
+      letter-spacing: -0.3px;
+      font-weight: 700;
+      cursor: pointer;
+      -webkit-appearance: none;
+      transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    /* Primary (새 매치 만들기) - 강조 */
+    .fab-btn-primary { 
+      background: linear-gradient(135deg, #00E676, #00C853); 
+      color: #000; 
+      border: none; 
+      font-size: 14px; 
+      font-weight: 900;
+      box-shadow: 0 4px 14px rgba(0,230,118,0.35); 
+    }
+    .fab-btn-primary:active { transform: scale(0.96); }
+    
+    /* Secondary (프로필/명부/출석/랭킹) - 글래스 */
+    .fab-btn-secondary { 
+      background: rgba(30, 35, 32, 0.85);
+      color: #E8F5E9; 
+      border: 1px solid rgba(255,255,255,0.1); 
+      backdrop-filter: blur(12px); 
+      -webkit-backdrop-filter: blur(12px); 
+      font-size: 13px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .fab-btn-secondary:active { 
+      transform: scale(0.96); 
+      background: rgba(45, 50, 47, 0.95); 
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img">
+    <button class="btn-install-icon" onclick="openInstallGuide()" aria-label="제작자 정보">
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+    </button>
+  </div>
+  
+  <div class="notice-container" onclick="openNoticeModal()" title="공지 관리">
+    <div class="notice-track" id="noticeTrack">
+      <div class="notice-text" id="displayNotice">공지를 불러오는 중입니다...</div>
+      <div class="notice-text" id="displayNotice2">공지를 불러오는 중입니다...</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">진행 중인 매치</div>
+    <div class="section-badge" id="matchCountBadge"></div>
+  </div>
+  <div id="skeletonList">
+    <div class="skeleton" style="height:118px"></div><div class="skeleton" style="height:118px"></div>
+  </div>
+  <div class="match-list" id="matchList"></div>
+</div>
+
+<div class="modal-bg" id="noticeModal">
+  <div class="modal-content">
+    <div class="modal-pill"></div>
+    <div class="modal-header">
+      <div class="modal-title">공지 관리</div>
+      <button class="modal-close" onclick="closeNoticeModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="form-group"><label class="form-label">전광판 내용</label><input type="text" id="n_text" class="form-input" placeholder="전광판에 띄울 내용"></div>
+    <div class="form-group"><label class="form-label">스크롤 속도 (초)</label><input type="number" id="n_speed" class="form-input" value="24"></div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:18px 0;">
+    <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">📌 팝업 공지 (비워두면 표시안됨)</div>
+    <div class="form-group"><label class="form-label">팝업 내용</label><textarea id="p_text" class="form-input" rows="3" style="resize:vertical"></textarea></div>
+    <div class="form-group"><label class="form-label">팝업 만료일</label><input type="date" id="p_expire" class="form-input"></div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:18px 0;">
+    <div class="form-group"><label class="form-label">마스터 비밀번호</label><input type="password" id="n_pw" class="form-input" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') { saveNotice(); }"></div>
+    <button class="btn-modal-submit" id="noticeBtn" onclick="saveNotice()">공지 적용하기</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="createModal">
+  <div class="modal-content">
+    <div class="modal-pill"></div>
+    <div class="modal-header">
+      <div class="modal-title">새로운 매치 오픈</div>
+      <button class="modal-close" onclick="closeCreateModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="form-group"><label class="form-label">경기 일시</label><input type="datetime-local" id="c_date" class="form-input"></div>
+    <div class="form-group"><label class="form-label">구장 이름</label><input type="text" id="c_loc" class="form-input" placeholder="구장 이름 입력"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">팀당 인원</label><input type="number" id="c_per" class="form-input" value="6"></div>
+      <div class="form-group"><label class="form-label">총 팀 수</label><input type="number" id="c_total" class="form-input" value="3"></div>
+    </div>
+    <div class="form-group"><label class="form-label">관리자 비밀번호</label><input type="password" id="c_pw" class="form-input" placeholder="매니저 전용 비밀번호" onkeypress="if(event.key==='Enter') { createMatch(); }"></div>
+    <button class="btn-modal-submit" id="createBtn" onclick="createMatch()">매치 개설하기</button>
+  </div>
+</div>
+
+<div id="popupOverlay">
+  <div class="popup-box">
+    <div style="font-size:15px;font-weight:900;color:var(--green);margin-bottom:14px">공지사항</div>
+    <div id="popupContent" style="font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;text-align:left;padding:14px;background:var(--bg3);border-radius:11px;border:1px solid var(--border);max-height:260px;overflow-y:auto;margin-bottom:8px"></div>
+    <div id="popupExpire" style="font-size:11px;color:var(--muted);margin:10px 0 18px"></div>
+    <button onclick="dismissPopup()" style="width:100%;height:48px;background:var(--green);color:#000;border:none;border-radius:12px;font-weight:900;font-size:14px;cursor:pointer;-webkit-appearance:none;">확인했습니다</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="installGuideModal">
+  <div class="guide-modal-content">
+    <div class="modal-header" style="margin-bottom:16px;">
+      <div class="modal-title">제작자 정보</div>
+      <button class="modal-close" onclick="closeInstallGuide()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    
+    <!-- 제작자 프로필 카드 -->
+    <div style="background:linear-gradient(135deg, rgba(0,230,118,0.06), rgba(0,230,118,0.02)); border:1px solid rgba(0,230,118,0.2); border-radius:14px; padding:24px 16px; margin-bottom:16px; text-align:center;">
+      <div style="font-size:11px; color:var(--green); font-weight:900; letter-spacing:2px; margin-bottom:14px;">MADE BY</div>
+      <div style="margin-bottom:14px;">
+        <img src="./4rest.svg" alt="4rest" style="height:52px; width:auto; display:inline-block;" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend','<div style=\'font-size:28px; font-weight:900; color:var(--green); letter-spacing:-0.5px;\'>4rest</div>');">
+      </div>
+      <div style="font-size:15px; font-weight:700; color:var(--muted2);">박순렬</div>
+    </div>
+    
+    <!-- 연락처 정보 -->
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+      <a href="tel:010-4931-3298" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; text-decoration:none; color:var(--text); transition:background 0.2s;">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--green)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:10px; color:var(--muted); font-weight:700; margin-bottom:2px;">전화</div>
+          <div style="font-size:14px; font-weight:800;">010-4931-3298</div>
+        </div>
+      </a>
+      
+      <a href="https://www.4rest.net" target="_blank" rel="noopener" style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; text-decoration:none; color:var(--text); transition:background 0.2s;">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--green)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:10px; color:var(--muted); font-weight:700; margin-bottom:2px;">웹사이트</div>
+          <div style="font-size:14px; font-weight:800;">www.4rest.net</div>
+        </div>
+      </a>
+      
+      <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--bg3); border:1px solid var(--border); border-radius:10px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="var(--green)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:10px; color:var(--muted); font-weight:700; margin-bottom:2px;">주소</div>
+          <div style="font-size:12px; font-weight:700; line-height:1.45; letter-spacing:-0.3px;">광주광역시 동구 충장로46번길 8, 2층</div>
+        </div>
+      </div>
+    </div>
+    
+    <button onclick="closeInstallGuide()" style="width:100%; height:46px; background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:12px; font-weight:700; font-size:14px; cursor:pointer;">닫기</button>
+  </div>
+</div>
+
+<div class="fab-wrapper" id="fabWrapper">
+  <button class="fab-toggle-btn" onclick="toggleFab(event)">
+    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+  <div class="fab-expand-menu">
+    <button class="fab-btn-primary" onclick="openCreateModal()">새 매치 만들기</button>
+    <button class="fab-btn-secondary" onclick="location.href='profile.html'">프로필</button>
+    <button class="fab-btn-secondary" onclick="location.href='members.html'">회원 명부</button>
+    <button class="fab-btn-secondary" onclick="location.href='attendance.html'">출석률</button>
+    <button class="fab-btn-secondary" onclick="location.href='ranking.html'">랭킹</button>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = { apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU", authDomain: "fcmon-96ec1.firebaseapp.com", projectId: "fcmon-96ec1", storageBucket: "fcmon-96ec1.firebasestorage.app", messagingSenderId: "912620232254", appId: "1:912620232254:web:b86a27fa9f733f2c137b6f" };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const AUTH_FUNCTIONS_BASE_URL = "https://us-central1-fcmon-96ec1.cloudfunctions.net";
+
+  /* ═══════════════════════ 🔐 마스터 비밀번호 인증 시스템 ═══════════════════════ */
+  /* Firestore의 settings/system 문서에 저장된 masterPwHash(SHA-256)와 비교      */
+  /* 평문 마스터 비번이 HTML 소스에 노출되지 않도록 함                             */
+  let _cachedMasterHash = null; // 세션 내 캐싱 (매번 DB 호출 방지)
+
+  async function sha256(text) {
+    const buf = new TextEncoder().encode(text);
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function verifyMasterPw(pw) {
+    if (!pw) return false;
+    try {
+      if (!_cachedMasterHash) {
+        const doc = await db.collection("settings").doc("system").get();
+        if (!doc.exists || !doc.data().masterPwHash) {
+          console.warn('[Auth] masterPwHash가 설정되지 않았습니다.');
+          return false;
+        }
+        _cachedMasterHash = doc.data().masterPwHash;
+      }
+      const inputHash = await sha256(pw);
+      return inputHash === _cachedMasterHash;
+    } catch (err) {
+      console.error('[Auth] 인증 확인 중 오류:', err);
+      return false;
+    }
+  }
+
+  async function makeMatchPwHash(pw) {
+    return sha256('match:' + pw);
+  }
+
+  async function callAuthFunction(name, payload) {
+    const res = await fetch(AUTH_FUNCTIONS_BASE_URL + '/' + name, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('auth-function-' + res.status);
+    return await res.json();
+  }
+
+  async function verifyMatchAdminPw(pw, matchData, gameId) {
+    if (!pw || !matchData) return false;
+    if (gameId) {
+      try {
+        const result = await callAuthFunction('verifyMatchAdminPassword', { gameId: gameId, pw: pw });
+        if (result && result.ok) {
+          delete matchData.adminPw;
+          delete matchData.adminPwHash;
+          return true;
+        }
+      } catch (err) {
+        console.warn('[Auth] 서버 매치 인증 실패, 로컬 호환 검증으로 전환:', err);
+      }
+    }
+    if (matchData.adminPwHash) return await makeMatchPwHash(pw) === matchData.adminPwHash;
+    return matchData.adminPw === pw;
+  }
+
+  async function migrateMatchAdminPwIfLegacy(gameId, pw, matchData) {
+    if (!gameId || !pw || !matchData || matchData.adminPwHash || matchData.adminPw !== pw) return;
+    try {
+      const adminPwHash = await makeMatchPwHash(pw);
+      await db.collection("matches").doc(gameId).update({ adminPw: '0000', adminPwHash: adminPwHash });
+      matchData.adminPw = '0000';
+      matchData.adminPwHash = adminPwHash;
+    } catch (err) {
+      console.warn('[Auth] 매치 비밀번호 마이그레이션 실패:', err);
+    }
+  }
+  /* ═════════════════════════════════════════════════════════════════════════════ */
+
+  /* ═══════════════════════ 🛡 XSS 방어 헬퍼 ═══════════════════════════════════ */
+  /* innerHTML에 사용자 입력을 넣기 전 HTML 특수문자를 이스케이프 */
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /* photoUrl의 안전 검증: data:image/ 또는 http(s):// 만 허용 */
+  /* javascript: 같은 위험한 프로토콜 차단 */
+  function safePhotoUrl(url) {
+    if (!url) return '';
+    const s = String(url).trim();
+    if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(s)) return s;
+    if (/^https?:\/\//i.test(s)) return s;
+    return ''; // 안전하지 않은 URL은 빈 문자열로
+  }
+  /* ═════════════════════════════════════════════════════════════════════════════ */
+
+  /* ═══════════════════════ 🌀 로딩 상태 유틸 ═══════════════════════════════════ */
+  /* 버튼 로딩 시작: setButtonLoading(btn, true, '저장 중...') */
+  /* 로딩 종료:    setButtonLoading(btn, false) */
+  function setButtonLoading(btn, isLoading, loadingText) {
+    if (!btn) return;
+    if (isLoading) {
+      if (!btn.dataset.originalText) {
+        btn.dataset.originalText = btn.textContent;
+      }
+      btn.textContent = loadingText || '처리 중...';
+      btn.disabled = true;
+      btn.classList.add('btn-loading');
+    } else {
+      if (btn.dataset.originalText) {
+        btn.textContent = btn.dataset.originalText;
+        delete btn.dataset.originalText;
+      }
+      btn.disabled = false;
+      btn.classList.remove('btn-loading');
+    }
+  }
+  /* ═════════════════════════════════════════════════════════════════════════════ */
+
+  window.onload = function() {
+    loadMatchesRealtime(); setDefaultDate(); loadSettingsRealtime();
+  };
+  
+  function toggleFab(e) { if(e) e.stopPropagation(); document.getElementById('fabWrapper').classList.toggle('open'); }
+  document.addEventListener('click', function(event) {
+    const fab = document.getElementById('fabWrapper');
+    if (fab && fab.classList.contains('open') && !fab.contains(event.target)) fab.classList.remove('open');
+  });
+
+  function setDefaultDate() {
+    var now = new Date(), day = now.getDay();
+    var daysUntil = day === 1 ? 7 : (8 - day) % 7;
+    var next = new Date(now); next.setDate(now.getDate() + daysUntil); next.setHours(21, 0, 0, 0);
+    var tzOffset = next.getTimezoneOffset() * 60000;
+    document.getElementById('c_date').value = new Date(next - tzOffset).toISOString().slice(0, 16);
+    document.getElementById('c_loc').value = '상무풋살';
+  }
+
+  function loadSettingsRealtime() {
+    db.collection("settings").doc("system").onSnapshot((doc) => {
+      if (doc.exists) {
+        const data = doc.data();
+        if (data.notice) {
+          const txt = '📢 ' + data.notice.text;
+          document.getElementById('displayNotice').innerText = txt; document.getElementById('displayNotice2').innerText = txt;
+          document.getElementById('noticeTrack').style.animationDuration = (data.notice.speed || 24) + 's';
+          document.getElementById('n_text').value = data.notice.text || ''; document.getElementById('n_speed').value = data.notice.speed || 24;
+        }
+        if (data.popup && data.popup.text) {
+          document.getElementById('p_text').value = data.popup.text || ''; document.getElementById('p_expire').value = data.popup.expireDate || '';
+          const now = new Date(), exp = data.popup.expireDate ? new Date(data.popup.expireDate + 'T23:59:59') : null;
+          if (!exp || now <= exp) {
+            const key = 'fcmon_popup_' + (data.popup.createdAt || '').replace(/[^a-zA-Z0-9]/g, '');
+            if (localStorage.getItem(key) !== 'dismissed') {
+              document.getElementById('popupContent').textContent = data.popup.text;
+              document.getElementById('popupExpire').textContent = data.popup.expireDate ? '게시 기한: ' + data.popup.expireDate + '까지' : '';
+              document.getElementById('popupOverlay').style.display = 'flex'; window._popupKey = key;
+            }
+          }
+        } else { document.getElementById('p_text').value = ''; document.getElementById('p_expire').value = ''; }
+      }
+    });
+  }
+  function dismissPopup(){ if(window._popupKey) localStorage.setItem(window._popupKey, 'dismissed'); document.getElementById('popupOverlay').style.display='none'; }
+
+  function openNoticeModal() {
+    document.getElementById('noticeModal').classList.add('show');
+    if (!document.getElementById('p_expire').value) {
+      var t = new Date(), pad = function(n){return String(n).padStart(2,'0')};
+      document.getElementById('p_expire').value = t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate());
+    }
+  }
+  function closeNoticeModal() { document.getElementById('noticeModal').classList.remove('show'); document.getElementById('n_pw').value=''; }
+  
+  async function saveNotice() {
+    const text = document.getElementById('n_text').value.trim(), speed = document.getElementById('n_speed').value.trim(), pw = document.getElementById('n_pw').value.trim(), pText = document.getElementById('p_text').value.trim(), pExpire = document.getElementById('p_expire').value;
+    const btn = document.getElementById('noticeBtn');
+    setButtonLoading(btn, true, '확인 중...');
+
+    const isMaster = await verifyMasterPw(pw);
+    if(!isMaster) {
+      showToast('마스터 비밀번호가 틀렸습니다.', 'error');
+      setButtonLoading(btn, false);
+      return;
+    }
+
+    setButtonLoading(btn, true, '적용 중...');
+    const newSettings = { notice: { text: text, speed: Number(speed) || 24 } };
+    if (pText) newSettings.popup = { text: pText, expireDate: pExpire, createdAt: new Date().toISOString() }; else newSettings.popup = null;
+    db.collection("settings").doc("system").set(newSettings, { merge: true })
+      .then(() => { 
+        showToast('공지가 반영되었습니다!', 'success'); 
+        closeNoticeModal(); 
+        setButtonLoading(btn, false);
+      })
+      .catch(e => { 
+        showToast('오류: ' + e.message, 'error'); 
+        setButtonLoading(btn, false);
+      });
+  }
+
+  function loadMatchesRealtime() {
+    db.collection("matches").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+      const matches = []; snapshot.forEach((doc) => matches.push(doc.data())); renderMatches(matches);
+    }, (error) => {
+      document.getElementById('skeletonList').style.display = 'none'; document.getElementById('matchList').innerHTML = '<div class="empty-state"><div class="empty-title">DB 에러</div></div>';
+    });
+  }
+
+  function getMatchStatus(dateTimeStr, currentCount, capacity, isDone) {
+    if (isDone) return 'done';
+    var now = new Date(), start = new Date(dateTimeStr), end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    if (now >= end) return 'done'; if (now >= start) return 'live';
+    if ((start - now) / 60000 <= 60 || currentCount >= capacity) return 'soon';
+    return 'open';
+  }
+
+  function getTimeChip(dateTimeStr, status) {
+    var now = new Date(), start = new Date(dateTimeStr);
+    if (status === 'done') return { text: '경기 종료', cls: 'done' };
+    if (status === 'live') return { text: '경기중 ' + Math.floor((now - start) / 60000) + '분', cls: 'live' };
+    var diffMin = Math.floor((start - now) / 60000);
+    if (diffMin < 60) return { text: diffMin + '분 후 시작', cls: '' };
+    var diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return { text: diffH + '시간 후', cls: '' };
+    return { text: Math.floor(diffH / 24) + '일 후 시작', cls: '' };
+  }
+
+  /* ★ 배지와 남은 시간을 하나로 합치는 함수 */
+  function getStatusBadge(status, timeText) {
+    var map = { open: { cls: 'badge-open', label: '모집중' }, soon: { cls: 'badge-soon', label: '마감임박' }, live: { cls: 'badge-live', label: '경기중' }, done: { cls: 'badge-done', label: '경기종료' } };
+    var s = map[status] || map.open;
+    var timeHtml = '';
+    if (timeText && timeText !== '경기 종료') {
+      timeHtml = '<span class="status-time">' + timeText + '</span>';
+    }
+    return '<div class="status-badge ' + s.cls + '"><span class="dot"></span>' + s.label + timeHtml + '</div>';
+  }
+
+  function renderMatches(matches) {
+    document.getElementById('skeletonList').style.display = 'none';
+    const activeMatches = matches.filter(m => m.status !== '매치종료' && !m.deletedAt);
+    if (activeMatches.length === 0) {
+      document.getElementById('matchCountBadge').textContent = '';
+      document.getElementById('matchList').innerHTML = 
+        '<div class="empty-state">' +
+          '<div class="empty-icon">⚽</div>' +
+          '<div class="empty-title">예정된 매치가 없습니다</div>' +
+          '<div class="empty-sub">새 매치를 만들어 동호회원을 모집해보세요</div>' +
+          '<button class="empty-cta-btn" onclick="openCreateModal()">' +
+            '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>' +
+            '매치 만들기' +
+          '</button>' +
+        '</div>'; 
+      return;
+    }
+    document.getElementById('matchCountBadge').textContent = activeMatches.length + '개';
+    var html = '';
+    activeMatches.forEach(function(m) {
+      var capacity = m.perTeam * m.totalTeams; var currentPlayers = m.currentCount || 0; 
+      var status = getMatchStatus(m.dateTime, currentPlayers, capacity, m.status === '매치종료');
+      var chip = getTimeChip(m.dateTime, status);
+      var badgeHtml = getStatusBadge(status, chip.text); // 통합된 배지
+      
+      var dateStr = new Date(m.dateTime).toLocaleString('ko-KR', { month:'short', day:'numeric', weekday:'short', hour:'2-digit', minute:'2-digit' });
+      var fillPct = capacity > 0 ? Math.min(100, Math.round(currentPlayers / capacity * 100)) : 0;
+      var fillCls = fillPct >= 100 ? 'full' : fillPct >= 75 ? 'soon' : '';
+
+      html += '<div class="match-card status-' + status + '" onclick="goToMatch(\'' + escapeHtml(m.gameId) + '\')">' +
+          '<div class="card-top"><div class="match-loc">' + escapeHtml(m.location) + '</div>' + badgeHtml + '</div>' +
+          '<div class="match-date">' + dateStr + '</div>' +
+          '<div class="card-bottom">' +
+            '<div class="capacity-wrap"><div class="capacity-bar-track"><div class="capacity-bar-fill ' + fillCls + '" style="width:' + fillPct + '%"></div></div><span class="capacity-count">' + currentPlayers + '<span class="capacity-text">/' + capacity + '명</span></span></div>' +
+            '<div class="btn-delete-match" onclick="promptDeleteMatch(event,\'' + escapeHtml(m.gameId) + '\')"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg></div>' +
+          '</div></div>';
+    });
+    document.getElementById('matchList').innerHTML = html;
+  }
+
+  let isSubmittingCreate = false;
+  async function createMatch() {
+    if(isSubmittingCreate) return;
+    var date = document.getElementById('c_date').value, loc = document.getElementById('c_loc').value.trim(), per = document.getElementById('c_per').value, total = document.getElementById('c_total').value, pw = document.getElementById('c_pw').value.trim();
+    if(!date || !loc || !pw) { showToast('모든 항목을 입력해주세요.', 'warning'); return; }
+    isSubmittingCreate = true; 
+    var btn = document.getElementById('createBtn'); 
+    setButtonLoading(btn, true, '생성 중...');
+    const newGameId = 'G-' + Date.now();
+    const adminPwHash = await makeMatchPwHash(pw);
+    db.collection("matches").doc(newGameId).set({
+      gameId: newGameId, dateTime: date, location: loc, perTeam: Number(per), totalTeams: Number(total), status: '모집중', currentCount: 0, adminPw: '0000', adminPwHash: adminPwHash, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => { closeCreateModal(); window.location.href = 'admin.html?gameId=' + newGameId; })
+    .catch((error) => { 
+      showToast('에러: ' + error.message, 'error'); 
+      isSubmittingCreate = false; 
+      setButtonLoading(btn, false);
+    });
+  }
+
+  async function promptDeleteMatch(event, gameId) {
+    event.stopPropagation();
+    
+    // ═══════════ 1단계: 매치 정보 먼저 조회 (경고에 사용) ═══════════
+    let matchInfo;
+    try {
+      const infoDoc = await db.collection("matches").doc(gameId).get();
+      if (!infoDoc.exists) { showToast("매치 정보를 찾을 수 없습니다.", 'error'); return; }
+      matchInfo = infoDoc.data();
+    } catch (err) {
+      showToast("매치 조회 실패: " + err.message, 'error');
+      return;
+    }
+    
+    // ═══════════ 2단계: 1차 확인 - 매치 정보 명시 경고 ═══════════
+    const dateStr = new Date(matchInfo.dateTime).toLocaleString('ko-KR', { 
+      month: 'short', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' 
+    });
+    const participantCount = matchInfo.currentCount || 0;
+    
+    const confirmMsg = 
+      '🚨 다음 매치를 정말 삭제하시겠습니까?\n\n' +
+      '📍 장소: ' + matchInfo.location + '\n' +
+      '📅 일시: ' + dateStr + '\n' +
+      '👥 참가자: ' + participantCount + '명\n\n' +
+      '⚠️ 이 작업은 매치를 목록에서 숨깁니다.\n' +
+      '(5초 안에 되돌리기 가능)';
+    
+    const firstConfirm = await showConfirm(confirmMsg, { 
+      title: '⚠️ 매치 삭제 확인', 
+      danger: true, 
+      confirmText: '계속' 
+    });
+    if (!firstConfirm) return;
+    
+    // ═══════════ 3단계: 2차 확인 - 비밀번호 입력 ═══════════
+    var pw = await showPrompt('매니저 또는 마스터 비밀번호를 입력해주세요', { 
+      title: '매치 삭제 - 인증', 
+      type: 'password', 
+      placeholder: '비밀번호 4자리',
+      maxlength: 4
+    }); 
+    if(!pw) return;
+
+    // 마스터 비번 해시 검증
+    const isMaster = await verifyMasterPw(pw);
+    let authorized = isMaster;
+    let authType = isMaster ? 'master' : '';
+    
+    // 마스터 아니면 매치별 매니저 비번 검증
+    if (!authorized) {
+      if (await verifyMatchAdminPw(pw, matchInfo, gameId)) { 
+        authorized = true; 
+        authType = 'manager'; 
+        await migrateMatchAdminPwIfLegacy(gameId, pw, matchInfo);
+      }
+    }
+    
+    if (!authorized) { showToast("비밀번호 불일치", 'error'); return; }
+    
+    // ═══════════ 4단계: 삭제 전 스냅샷 확보 (되돌리기용) ═══════════
+    try {
+      const savedMatchData = matchInfo;
+      
+      const entriesSnap = await db.collection("matches").doc(gameId).collection("entries").get();
+      const savedEntries = [];
+      entriesSnap.forEach(doc => {
+        savedEntries.push({ id: doc.id, data: doc.data() });
+      });
+      
+      // ═══════════ 5단계: 삭제 로그 먼저 기록 ═══════════
+      // (삭제보다 먼저 로그를 남겨야 혹시 실패해도 추적 가능)
+      // expireAt: 30일 후 자동 삭제 (Firestore TTL)
+      try {
+        const thirtyDaysLater = new Date();
+        thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+        
+        await db.collection("deletionLogs").add({
+          gameId: gameId,
+          matchLocation: matchInfo.location || '',
+          matchDate: matchInfo.dateTime || '',
+          participantCount: participantCount,
+          deletedAt: new Date().toISOString(),
+          authType: authType, // 'master' or 'manager'
+          userAgent: navigator.userAgent.substring(0, 200), // 어떤 기기/브라우저에서 지웠는지
+          expireAt: firebase.firestore.Timestamp.fromDate(thirtyDaysLater) // 30일 후 자동 삭제
+        });
+      } catch (logErr) {
+        // 로그 실패해도 삭제는 계속 진행 (로그는 부가기능)
+        console.warn('삭제 로그 기록 실패:', logErr);
+      }
+      
+      // ═══════════ 6단계: 물리 삭제 대신 숨김 처리 ═══════════
+      // Firestore Rules에서 matches delete를 막기 위해 문서는 보존하고 목록/접근에서 제외한다.
+      const deletedAt = new Date().toISOString();
+      await db.collection("matches").doc(gameId).update({
+        deletedAt: deletedAt,
+        deletedBy: authType,
+        deletedEntryCount: savedEntries.length
+      });
+      
+      // ═══════════ 7단계: Undo 토스트 표시 ═══════════
+      showUndoToast('매치가 삭제되었습니다', async () => {
+        // 되돌리기: 숨김 처리 필드 제거
+        try {
+          await db.collection("matches").doc(gameId).set(savedMatchData);
+          showToast("매치가 복원되었습니다", 'success');
+        } catch (err) {
+          showToast("복원 실패: " + err.message, 'error');
+        }
+      }, { duration: 5000, label: '되돌리기' });
+      
+    } catch (err) {
+      showToast("삭제 중 오류: " + err.message, 'error');
+    }
+  }
+
+  function openCreateModal() { document.getElementById('createModal').classList.add('show'); }
+  function closeCreateModal() { document.getElementById('createModal').classList.remove('show'); document.getElementById('c_pw').value=''; }
+  function goToMatch(gid){ window.location.href = 'register.html?gameId=' + gid; }
+  function openInstallGuide() { document.getElementById('installGuideModal').classList.add('show'); }
+  function closeInstallGuide() { document.getElementById('installGuideModal').classList.remove('show'); }
+  
+  document.querySelectorAll('.modal-bg').forEach(function(el){ el.addEventListener('click', function(e){ if(e.target===el){ el.classList.remove('show'); } }); });
+
+  /* ★ PC 환경 키보드 제어 스크립트 */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-bg.show').forEach(function(el) { el.classList.remove('show'); });
+      const popupOverlay = document.getElementById('popupOverlay');
+      if (popupOverlay && popupOverlay.style.display !== 'none') { dismissPopup(); }
+    }
+    if (e.key === 'Enter') {
+      const popupOverlay = document.getElementById('popupOverlay');
+      if (popupOverlay && popupOverlay.style.display !== 'none') { dismissPopup(); }
+    }
+  });
+  
+  /* ═══════════ 🕵️ 삭제 로그 조회 (디버그용) ═══════════
+     사용법: 브라우저 F12 > Console에서 입력
+       showDeletionLogs()         → 최근 30건
+       showDeletionLogs(50)       → 최근 50건
+       showDeletionLogs('month')  → 이번 달만
+     
+     📌 로그는 30일 후 자동 삭제됩니다 (Firestore TTL + 클라이언트 클린업)
+  ═══════════════════════════════════════════════════════ */
+  window.showDeletionLogs = async function(opt) {
+    try {
+      let query = db.collection("deletionLogs").orderBy("deletedAt", "desc");
+      let limit = 30;
+      let title = "최근 매치 삭제 이력";
+      
+      if (opt === 'month') {
+        // 이번 달 1일 00:00:00 기준
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        query = query.where("deletedAt", ">=", monthStart);
+        limit = 100;
+        title = now.getMonth() + 1 + "월 매치 삭제 이력";
+      } else if (typeof opt === 'number') {
+        limit = opt;
+      }
+      
+      const snap = await query.limit(limit).get();
+      if (snap.empty) { 
+        console.log("%c📝 " + title + ": 기록 없음", "color: #888; font-size: 14px;"); 
+        return; 
+      }
+      console.log("%c🕵️ " + title + " (" + snap.size + "건)", "color: #00E676; font-size: 16px; font-weight: bold;");
+      console.log("%c⏳ 30일 후 자동 삭제됩니다", "color: #888; font-size: 11px;");
+      console.log("─".repeat(80));
+      snap.forEach(doc => {
+        const d = doc.data();
+        const when = new Date(d.deletedAt).toLocaleString('ko-KR');
+        const matchWhen = d.matchDate ? new Date(d.matchDate).toLocaleString('ko-KR') : '-';
+        console.log(
+          "%c🗑 " + when + "\n" +
+          "%c   매치: " + (d.matchLocation || '-') + " (" + matchWhen + ")\n" +
+          "   gameId: " + d.gameId + "\n" +
+          "   참가자: " + (d.participantCount || 0) + "명\n" +
+          "   인증: " + (d.authType === 'master' ? '🔑 마스터' : '👤 매니저') + "\n" +
+          "   기기: " + (d.userAgent || '-').substring(0, 80),
+          "color: #FF4757; font-weight: bold;",
+          "color: #ccc;"
+        );
+        console.log("─".repeat(80));
+      });
+    } catch (err) {
+      console.error("삭제 로그 조회 실패:", err);
+    }
+  };
+  
+  // 콘솔 팁 안내
+  console.log("%c💡 삭제 이력: showDeletionLogs() · 이번달만: showDeletionLogs('month')", "color: #00E676; font-size: 11px;");
+</script>
+<!--
+════════════════════════════════════════════════════════════════════
+🎨 FCMON 공용 다이얼로그 라이브러리 v1.0
+각 페이지에 통째로 복사해서 넣으면 됩니다.
+════════════════════════════════════════════════════════════════════
+
+제공 API:
+  showToast(message, type)     - type: 'info' | 'success' | 'warning' | 'error'
+  await showConfirm(message, { title, confirmText, cancelText, danger })
+  await showPrompt(message, { title, type, placeholder, maxlength, defaultValue })
+
+사용 예:
+  showToast('저장되었습니다', 'success');
+  if (await showConfirm('삭제할까요?', { danger: true })) { ... }
+  const pw = await showPrompt('비밀번호:', { type: 'password', maxlength: 4 });
+-->
+
+<!-- ═══════════════════════ CSS ═══════════════════════ -->
+<style>
+  /* 토스트 시스템 - 화면 상단에 순차 표시 */
+  #fcm-toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+    width: 100%;
+    max-width: 400px;
+    padding: 0 16px;
+  }
+  .fcm-toast {
+    background: var(--bg2, #0f1510);
+    color: var(--text, #E8F5E9);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-left: 3px solid var(--green, #00E676);
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: fcm-toast-in 0.25s ease;
+    pointer-events: auto;
+    max-width: 100%;
+    word-break: keep-all;
+    line-height: 1.5;
+  }
+  .fcm-toast.is-leaving { animation: fcm-toast-out 0.2s ease forwards; }
+  .fcm-toast-success { border-left-color: var(--green, #00E676); }
+  .fcm-toast-warning { border-left-color: #FFCA28; }
+  .fcm-toast-error   { border-left-color: #FF4757; }
+  .fcm-toast-info    { border-left-color: #40C4FF; }
+  @keyframes fcm-toast-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fcm-toast-out {
+    to { opacity: 0; transform: translateY(-10px); }
+  }
+
+  /* 다이얼로그 (confirm/prompt 공용) - 화면 중앙 */
+  #fcm-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    backdrop-filter: blur(6px);
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #fcm-dialog-overlay.is-open { display: flex; }
+  .fcm-dialog-box {
+    background: var(--bg2, #0f1510);
+    width: 100%;
+    max-width: 360px;
+    border-radius: 22px;
+    padding: 26px 22px 22px;
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    animation: fcm-dialog-in 0.25s cubic-bezier(0.32, 1, 0.23, 1);
+  }
+  @keyframes fcm-dialog-in {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .fcm-dialog-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--green, #00E676);
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+  }
+  .fcm-dialog-title.is-danger { color: #FF4757; }
+  .fcm-dialog-message {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text, #E8F5E9);
+    white-space: pre-wrap;
+    word-break: keep-all;
+    margin-bottom: 18px;
+  }
+  .fcm-dialog-input {
+    width: 100%;
+    background: var(--bg3, #161d17);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-radius: 11px;
+    padding: 12px 15px;
+    color: var(--text, #E8F5E9);
+    font-family: inherit;
+    font-size: 16px;
+    outline: none;
+    -webkit-appearance: none;
+    margin-bottom: 18px;
+    transition: border-color 0.2s;
+  }
+  .fcm-dialog-input:focus { border-color: var(--green, #00E676); }
+  .fcm-dialog-input::placeholder { color: var(--muted, #5a6e5c); }
+  .fcm-dialog-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .fcm-dialog-btn {
+    flex: 1;
+    height: 46px;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    -webkit-appearance: none;
+    transition: 0.15s;
+  }
+  .fcm-dialog-btn:active { transform: scale(0.97); }
+  .fcm-dialog-btn-cancel {
+    background: transparent;
+    color: var(--muted2, #8a9e8c);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+  }
+  .fcm-dialog-btn-cancel:hover { background: var(--bg3, #161d17); }
+  .fcm-dialog-btn-confirm {
+    background: var(--green, #00E676);
+    color: #000;
+  }
+  .fcm-dialog-btn-confirm.is-danger {
+    background: #FF4757;
+    color: #fff;
+  }
+</style>
+
+<!-- ═══════════════════════ JS ═══════════════════════ -->
+<script>
+(function(){
+  /* 🔔 토스트 */
+  function ensureToastContainer() {
+    let c = document.getElementById('fcm-toast-container');
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'fcm-toast-container';
+      document.body.appendChild(c);
+    }
+    return c;
+  }
+  
+  window.showToast = function(message, type) {
+    const container = ensureToastContainer();
+    const el = document.createElement('div');
+    el.className = 'fcm-toast fcm-toast-' + (type || 'info');
+    el.textContent = message;
+    container.appendChild(el);
+    
+    // 자동 제거
+    const duration = (type === 'error' || type === 'warning') ? 3800 : 2800;
+    setTimeout(function(){
+      el.classList.add('is-leaving');
+      setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+    }, duration);
+  };
+  
+  /* 🔧 다이얼로그 공통 DOM 구성 */
+  function ensureDialogOverlay() {
+    let ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'fcm-dialog-overlay';
+      ov.innerHTML = '<div class="fcm-dialog-box">' +
+        '<div class="fcm-dialog-title" id="fcm-dialog-title"></div>' +
+        '<div class="fcm-dialog-message" id="fcm-dialog-message"></div>' +
+        '<input type="text" class="fcm-dialog-input" id="fcm-dialog-input" style="display:none;">' +
+        '<div class="fcm-dialog-actions">' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-cancel" id="fcm-dialog-cancel"></button>' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-confirm" id="fcm-dialog-confirm"></button>' +
+        '</div></div>';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+  
+  let dialogResolver = null;
+  
+  function closeDialog(result) {
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (ov) ov.classList.remove('is-open');
+    if (dialogResolver) {
+      const r = dialogResolver;
+      dialogResolver = null;
+      r(result);
+    }
+  }
+  
+  /* ✅ showConfirm - Promise<boolean> */
+  window.showConfirm = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '확인';
+    titleEl.classList.toggle('is-danger', !!opts.danger);
+    messageEl.textContent = message;
+    messageEl.style.display = '';
+    inputEl.style.display = 'none';
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.toggle('is-danger', !!opts.danger);
+    
+    cancelBtn.onclick = function(){ closeDialog(false); };
+    confirmBtn.onclick = function(){ closeDialog(true); };
+    
+    ov.classList.add('is-open');
+    confirmBtn.focus();
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* 📝 showPrompt - Promise<string|null> */
+  window.showPrompt = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '입력';
+    titleEl.classList.remove('is-danger');
+    messageEl.textContent = message;
+    messageEl.style.display = message ? '' : 'none';
+    
+    inputEl.style.display = '';
+    inputEl.type = opts.type || 'text';
+    inputEl.placeholder = opts.placeholder || '';
+    inputEl.value = opts.defaultValue || '';
+    if (opts.maxlength) inputEl.maxLength = opts.maxlength;
+    else inputEl.removeAttribute('maxlength');
+    if (opts.type === 'number' || (opts.maxlength === 4 && opts.type === 'password')) {
+      inputEl.inputMode = 'numeric';
+      inputEl.pattern = '[0-9]*';
+    } else {
+      inputEl.removeAttribute('inputmode');
+      inputEl.removeAttribute('pattern');
+    }
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.remove('is-danger');
+    
+    cancelBtn.onclick = function(){ closeDialog(null); };
+    confirmBtn.onclick = function(){ closeDialog(inputEl.value); };
+    inputEl.onkeydown = function(e){ 
+      if (e.key === 'Enter') { e.preventDefault(); closeDialog(inputEl.value); }
+    };
+    
+    ov.classList.add('is-open');
+    setTimeout(function(){ inputEl.focus(); }, 50);
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* ⌨️ 전역 키보드 - ESC로 다이얼로그 취소, 배경 클릭으로 취소 */
+  document.addEventListener('keydown', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.key === 'Escape') { closeDialog(null); }
+  });
+  
+  document.addEventListener('click', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.target === ov) { closeDialog(null); }
+  }, true);
+})();
+</script>
+
+<!--
+════════════════════════════════════════════════════════════════════
+🔄 FCMON Undo 토스트 확장 v1.0
+_dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
+
+사용 예:
+  showUndoToast('매치가 삭제되었습니다', () => {
+    // 되돌리기 콜백 - 여기서 복원 로직 실행
+    restoreMatch(savedData);
+  }, {
+    duration: 5000,        // 표시 시간 (ms)
+    label: '되돌리기'      // 버튼 텍스트
+  });
+════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* Undo 토스트 전용 스타일 */
+  .fcm-undo-toast {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 14px 14px 18px !important;
+    min-width: 280px;
+    max-width: 360px;
+  }
+  .fcm-undo-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text, #E8F5E9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fcm-undo-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--green, #00E676);
+    color: var(--green, #00E676);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.15s;
+    letter-spacing: -0.3px;
+  }
+  .fcm-undo-btn:hover, .fcm-undo-btn:active { 
+    background: var(--green, #00E676); 
+    color: #000;
+  }
+  /* 진행 상태 바 - 남은 시간 시각화 */
+  .fcm-undo-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--green, #00E676);
+    width: 100%;
+    transform-origin: left center;
+    animation: fcm-undo-countdown linear forwards;
+  }
+  @keyframes fcm-undo-countdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+  }
+  .fcm-undo-toast { position: relative; overflow: hidden; }
+</style>
+
+<script>
+(function(){
+  /* 🔄 showUndoToast - 실행 취소 가능한 토스트 */
+  /* 반환값: { commit: () => void, cancel: () => void } */
+  /*   commit(): 즉시 완료(토스트 닫고 완료 콜백 실행 안 함) */
+  /*   cancel(): 되돌리기 동작 (토스트 닫고 onUndo 콜백 실행) */
+  
+  window.showUndoToast = function(message, onUndo, opts) {
+    opts = opts || {};
+    const duration = opts.duration || 5000;
+    const label = opts.label || '되돌리기';
+    
+    // 컨테이너 확보 (showToast와 공유)
+    let container = document.getElementById('fcm-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'fcm-toast-container';
+      document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'fcm-toast fcm-toast-success fcm-undo-toast';
+    
+    const msgEl = document.createElement('div');
+    msgEl.className = 'fcm-undo-message';
+    msgEl.textContent = message;
+    
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fcm-undo-btn';
+    btn.textContent = label;
+    
+    const progress = document.createElement('div');
+    progress.className = 'fcm-undo-progress';
+    progress.style.animationDuration = duration + 'ms';
+    
+    toast.appendChild(msgEl);
+    toast.appendChild(btn);
+    toast.appendChild(progress);
+    container.appendChild(toast);
+    
+    let settled = false;
+    let timeoutId = null;
+    
+    function dismiss() {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+      toast.classList.add('is-leaving');
+      setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
+    }
+    
+    btn.onclick = function() {
+      if (settled) return;
+      try { if (onUndo) onUndo(); } 
+      catch(e) { console.error('[Undo] 되돌리기 오류:', e); }
+      dismiss();
+    };
+    
+    timeoutId = setTimeout(function() {
+      // 자동 소멸 - 되돌리기 호출 없이 그냥 토스트 닫힘
+      dismiss();
+    }, duration);
+    
+    return {
+      commit: function() { dismiss(); },
+      cancel: function() { btn.click(); }
+    };
+  };
+})();
+</script>
+
+</body>
+</html>

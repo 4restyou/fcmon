@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <link rel="icon" type="image/png" href="./sublogo2.png">
+  <link rel="shortcut icon" href="./sublogo2.png">
+  <link rel="apple-touch-icon" href="./sublogo2.png">
+  <meta name="apple-mobile-web-app-title" content="FCMON">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FCMON - 회원 명부</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./common.css">
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <style>
+    .container { max-width: 480px; margin: 0 auto; padding: 0 16px 100px; }
+    
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 20px 0 16px; }
+    .top-logo-img { height: 35px; width: auto; object-fit: contain; }
+    .back-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--text); }
+    
+    /* 요약 카드 */
+    .summary-card { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 16px; background: linear-gradient(135deg, var(--bg2), var(--bg3)); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 16px; }
+    .summary-item { text-align: center; }
+    .summary-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 4px; text-transform: uppercase; }
+    .summary-val { font-size: 22px; font-family: 'Bebas Neue', sans-serif; font-weight: 900; letter-spacing: 1px; }
+    .summary-val.v-active { color: var(--green); }
+    .summary-val.v-inactive { color: var(--amber); }
+    .summary-val.v-retired { color: var(--muted2); }
+    
+    /* 탭 */
+    .tabs { display: flex; gap: 4px; margin-bottom: 12px; background: var(--bg3); border-radius: 10px; padding: 4px; }
+    .tab-btn { flex: 1; padding: 9px 8px; background: transparent; border: none; color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 7px; transition: all 0.2s; }
+    .tab-btn.active { background: var(--bg2); color: var(--text); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .tab-btn .tab-count { opacity: 0.7; font-size: 11px; margin-left: 3px; }
+    
+    /* 검색 & 정렬 */
+    .toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
+    .search-input { flex: 1; padding: 10px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 13px; outline: none; transition: border-color 0.2s; }
+    .search-input:focus { border-color: var(--green); }
+    .sort-select { padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; outline: none; }
+    
+    /* 회원 카드 리스트 */
+    .member-list { display: flex; flex-direction: column; gap: 8px; }
+    .member-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.15s, border-color 0.2s, background 0.2s; }
+    .member-card:active { transform: scale(0.99); }
+    .member-card:hover { border-color: rgba(255,255,255,0.12); background: var(--bg2); }
+    .member-card.is-inactive { opacity: 0.7; }
+    .member-card.is-retired { opacity: 0.5; }
+    
+    .member-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--bg); overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
+    .member-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    
+    .member-info { flex: 1; min-width: 0; }
+    .member-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+    .member-name { font-size: 14px; font-weight: 900; color: var(--text); }
+    .member-badge { font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 6px; letter-spacing: 0.3px; }
+    .member-badge.b-inactive { background: rgba(255,202,40,0.15); color: var(--amber); border: 1px solid rgba(255,202,40,0.3); }
+    .member-badge.b-retired { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
+    .member-meta { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .member-meta .dot-sep { opacity: 0.3; }
+    
+    .member-pos { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 900; letter-spacing: 0.3px; }
+    .member-pos.pos-FW { background: #FF4757; color: #fff; }
+    .member-pos.pos-MF { background: #2ED573; color: #fff; }
+    .member-pos.pos-DF { background: #1E90FF; color: #fff; }
+    .member-pos.pos-GK { background: #FFA502; color: #fff; }
+    
+    .member-ovr { font-family: 'Bebas Neue', sans-serif; font-size: 16px; font-weight: 900; color: var(--green); letter-spacing: 1px; min-width: 32px; text-align: right; }
+    
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); font-size: 13px; }
+    .empty-icon { font-size: 40px; opacity: 0.3; margin-bottom: 12px; }
+    
+    /* 상세 모달 */
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; backdrop-filter: blur(6px); }
+    .modal-bg.show { display: flex; align-items: flex-end; justify-content: center; }
+    .modal-sheet { background: var(--bg2); width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 16px 20px 32px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.32, 1, 0.23, 1); }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @media (min-width: 768px) {
+      .modal-bg.show { align-items: center; }
+      .modal-sheet { max-width: 480px; border-radius: 20px; animation: popIn 0.25s ease; }
+      @keyframes popIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+    }
+    .modal-pill { width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 0 auto 14px; }
+    .modal-header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .modal-title { font-size: 16px; font-weight: 900; color: var(--text); }
+    .modal-close-btn { background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px; }
+    
+    .detail-header { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+    .detail-avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--bg3); overflow: hidden; border: 2px solid var(--border); flex-shrink: 0; }
+    .detail-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .detail-name-box { flex: 1; }
+    .detail-name { font-size: 20px; font-weight: 900; color: var(--text); margin-bottom: 4px; }
+    .detail-stats-mini { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); font-weight: 700; }
+    .detail-stats-mini strong { color: var(--text); }
+    
+    .detail-section { margin-bottom: 18px; }
+    .detail-section-title { font-size: 11px; font-weight: 900; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+    .detail-row { display: flex; justify-content: space-between; padding: 10px 12px; background: var(--bg3); border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
+    .detail-row-label { color: var(--muted); font-weight: 700; }
+    .detail-row-value { color: var(--text); font-weight: 700; text-align: right; word-break: break-all; margin-left: 12px; }
+    .detail-row-empty { color: var(--muted2); font-style: italic; font-weight: 400; }
+    
+    .action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+    .action-buttons.cols-1 { grid-template-columns: 1fr; }
+    .btn-action { padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-action:active { transform: scale(0.98); }
+    .btn-action.btn-edit { background: rgba(0,230,118,0.1); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+    .btn-action.btn-inactive { background: rgba(255,202,40,0.1); color: var(--amber); border: 1px solid rgba(255,202,40,0.3); }
+    .btn-action.btn-active { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.4); }
+    .btn-action.btn-retire { background: rgba(255,71,87,0.1); color: var(--red); border: 1px solid rgba(255,71,87,0.3); }
+    .btn-action.btn-restore { background: rgba(64,196,255,0.1); color: #40C4FF; border: 1px solid rgba(64,196,255,0.3); }
+    
+    /* 편집 폼 */
+    .edit-form { display: flex; flex-direction: column; gap: 12px; }
+    .form-label { font-size: 11px; font-weight: 900; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; display: block; }
+    .form-input, .form-textarea { width: 100%; padding: 11px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; outline: none; transition: border-color 0.2s; font-family: inherit; }
+    .form-input:focus, .form-textarea:focus { border-color: var(--green); }
+    .form-textarea { resize: vertical; min-height: 60px; }
+    .form-group { margin-bottom: 4px; }
+    
+    .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, var(--card) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 12px; height: 68px; margin-bottom: 8px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    
+    .footer-info { text-align: center; padding: 16px 0; color: var(--muted); margin-top: 24px; border-top: 1px solid var(--border); }
+      
+    /* ─── FAB 좌측 하단 고정 + 세로 메뉴 ─── */
+    .fab-wrapper {
+      position: fixed; 
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      left: 16px;
+      z-index: 100;
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      pointer-events: none;
+    }
+    @media (min-width: 512px) {
+      .fab-wrapper {
+        left: 50%;
+        margin-left: calc(-240px + 16px);
+      }
+    }
+    .fab-toggle-btn {
+      pointer-events: auto; 
+      width: 56px; height: 56px; 
+      border-radius: 50%; 
+      background: linear-gradient(135deg, #00E676, #00C853);
+      color: #000; border: none; cursor: pointer; 
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,230,118,0.4); 
+      transition: all 0.3s cubic-bezier(0.32, 1, 0.23, 1); 
+      outline: none;
+      order: 2;
+    }
+    .fab-wrapper.open .fab-toggle-btn { 
+      transform: rotate(135deg); 
+      background: #333; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+      color: #fff; 
+    }
+    .fab-expand-menu {
+      pointer-events: none; 
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      opacity: 0; 
+      transform: translateY(12px) scale(0.95); 
+      transition: all 0.28s cubic-bezier(0.32, 1, 0.23, 1);
+      order: 1;
+    }
+    .fab-wrapper.open .fab-expand-menu { 
+      opacity: 1; 
+      transform: translateY(0) scale(1); 
+      pointer-events: auto;
+    }
+    .fab-btn-primary, 
+    .fab-btn-secondary { 
+      min-width: 160px;
+      height: 46px;
+      padding: 0 22px;
+      border-radius: 23px;
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap; 
+      letter-spacing: -0.3px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      -webkit-appearance: none;
+      transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+      font-family: inherit;
+    }
+    .fab-btn-primary { 
+      background: linear-gradient(135deg, #00E676, #00C853); 
+      color: #000; 
+      font-size: 14px; 
+      font-weight: 900;
+      box-shadow: 0 4px 14px rgba(0,230,118,0.35); 
+    }
+    .fab-btn-primary:active { transform: scale(0.96); }
+    .fab-btn-secondary { 
+      background: rgba(30, 35, 32, 0.85);
+      color: #E8F5E9; 
+      border: 1px solid rgba(255,255,255,0.1); 
+      backdrop-filter: blur(12px); 
+      -webkit-backdrop-filter: blur(12px); 
+      font-size: 13px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .fab-btn-secondary:active { 
+      transform: scale(0.96); 
+      background: rgba(45, 50, 47, 0.95); 
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img" loading="eager">
+    <div class="back-btn" onclick="goBack()">←</div>
+  </div>
+  
+  <!-- 요약 카드 -->
+  <div class="summary-card">
+    <div class="summary-item">
+      <div class="summary-label">활성</div>
+      <div class="summary-val v-active" id="countActive">0</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">휴면</div>
+      <div class="summary-val v-inactive" id="countInactive">0</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">탈퇴</div>
+      <div class="summary-val v-retired" id="countRetired">0</div>
+    </div>
+  </div>
+  
+  <!-- 탭 -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="active" onclick="switchTab('active')">활성 <span class="tab-count" id="tabCountActive">(0)</span></button>
+    <button class="tab-btn" data-tab="inactive" onclick="switchTab('inactive')">휴면 <span class="tab-count" id="tabCountInactive">(0)</span></button>
+    <button class="tab-btn" data-tab="retired" onclick="switchTab('retired')">탈퇴 <span class="tab-count" id="tabCountRetired">(0)</span></button>
+  </div>
+  
+  <!-- 검색 & 정렬 -->
+  <div class="toolbar">
+    <input type="text" class="search-input" id="searchInput" placeholder="🔍 이름으로 검색" oninput="filterMembers()">
+    <select class="sort-select" id="sortSelect" onchange="filterMembers()">
+      <option value="name">이름순</option>
+      <option value="ovr">OVR 높은순</option>
+      <option value="rank">랭킹 높은순</option>
+      <option value="recent">가입 최신순</option>
+    </select>
+  </div>
+  
+  <!-- 회원 리스트 -->
+  <div id="memberList" class="member-list">
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  </div>
+  
+  <div class="footer-info">
+    <div style="opacity: 0.5; font-size: 11px;">FCMON · 회원 명부</div>
+  </div>
+</div>
+
+<!-- 회원 상세 모달 -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal-sheet">
+    <div class="modal-pill"></div>
+    <div class="modal-header-bar">
+      <div class="modal-title">회원 정보</div>
+      <button class="modal-close-btn" onclick="closeDetailModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- 회원 편집 모달 (매니저용) -->
+<div class="modal-bg" id="editModal">
+  <div class="modal-sheet">
+    <div class="modal-pill"></div>
+    <div class="modal-header-bar">
+      <div class="modal-title">회원 정보 수정</div>
+      <button class="modal-close-btn" onclick="closeEditModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="edit-form">
+      <div class="form-group">
+        <label class="form-label">연락처</label>
+        <input type="tel" id="editContact" class="form-input" placeholder="010-1234-5678">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Instagram</label>
+        <input type="text" id="editInstagram" class="form-input" placeholder="인스타그램 @없이">
+      </div>
+      <div class="form-group">
+        <label class="form-label">매니저 메모 (본인에게 비공개)</label>
+        <textarea id="editMemo" class="form-textarea" placeholder="매니저만 볼 수 있는 메모"></textarea>
+      </div>
+      <button class="btn-action btn-edit" style="margin-top: 8px;" onclick="saveEdit()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 공통 다이얼로그 -->
+<div id="dialogOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);"></div>
+
+<!-- 토스트 -->
+<div id="toastContainer" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:2500;pointer-events:none;display:flex;flex-direction:column;gap:8px;align-items:center;"></div>
+
+<script>
+  // ★ Firebase 초기화
+  const firebaseConfig = {
+    apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU",
+    authDomain: "fcmon-96ec1.firebaseapp.com",
+    projectId: "fcmon-96ec1",
+    storageBucket: "fcmon-96ec1.firebasestorage.app",
+    messagingSenderId: "912620232254",
+    appId: "1:912620232254:web:b86a27fa9f733f2c137b6f"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  
+  /* ═══════════════════════ XSS 방어 ═══════════════════════ */
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+  function safePhotoUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:image/')) return trimmed;
+    return '';
+  }
+  
+  /* ═══════════════════════ 토스트 ═══════════════════════ */
+  function showToast(message, type) {
+    type = type || 'info';
+    const container = document.getElementById('toastContainer');
+    const colors = {
+      success: { bg: '#00E676', color: '#000' },
+      error: { bg: '#FF4757', color: '#fff' },
+      warning: { bg: '#FFC440', color: '#000' },
+      info: { bg: '#333', color: '#fff' }
+    };
+    const c = colors[type] || colors.info;
+    const toast = document.createElement('div');
+    toast.style.cssText = `background:${c.bg};color:${c.color};padding:12px 20px;border-radius:10px;font-weight:700;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.4);animation:toastIn 0.25s ease;pointer-events:auto;max-width:90vw;`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(8px)'; }, 2500);
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 3000);
+  }
+  if (!document.getElementById('toastAnim')) {
+    const style = document.createElement('style');
+    style.id = 'toastAnim';
+    style.textContent = '@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }';
+    document.head.appendChild(style);
+  }
+  
+  /* ═══════════════════════ 공통 다이얼로그 (confirm/prompt) ═══════════════════════ */
+  function showConfirm(message, opts) {
+    opts = opts || {};
+    return new Promise(resolve => {
+      const overlay = document.getElementById('dialogOverlay');
+      overlay.innerHTML = `
+        <div style="background:var(--bg2);border:1px solid ${opts.danger ? 'rgba(255,71,87,0.4)' : 'var(--border)'};border-radius:18px;padding:24px;max-width:360px;width:100%;">
+          <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:6px;">${escapeHtml(opts.title || '확인')}</div>
+          <div style="font-size:13px;color:var(--muted2);line-height:1.6;white-space:pre-wrap;margin-bottom:20px;">${escapeHtml(message)}</div>
+          <div style="display:flex;gap:8px;">
+            <button id="_dlgCancel" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">${escapeHtml(opts.cancelText || '취소')}</button>
+            <button id="_dlgOk" style="flex:1;padding:10px;background:${opts.danger ? 'var(--red)' : 'var(--green)'};color:${opts.danger ? '#fff' : '#000'};border:none;border-radius:8px;font-weight:900;font-size:13px;cursor:pointer;">${escapeHtml(opts.confirmText || '확인')}</button>
+          </div>
+        </div>
+      `;
+      overlay.style.display = 'flex';
+      const close = v => { overlay.style.display = 'none'; overlay.innerHTML = ''; resolve(v); };
+      document.getElementById('_dlgCancel').onclick = () => close(false);
+      document.getElementById('_dlgOk').onclick = () => close(true);
+    });
+  }
+  function showPrompt(message, opts) {
+    opts = opts || {};
+    return new Promise(resolve => {
+      const overlay = document.getElementById('dialogOverlay');
+      overlay.innerHTML = `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:24px;max-width:360px;width:100%;">
+          <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:6px;">${escapeHtml(opts.title || '입력')}</div>
+          <div style="font-size:13px;color:var(--muted2);margin-bottom:14px;">${escapeHtml(message)}</div>
+          <input id="_dlgInput" type="${opts.type || 'text'}" placeholder="${escapeHtml(opts.placeholder || '')}" ${opts.maxlength ? 'maxlength="' + opts.maxlength + '"' : ''} style="width:100%;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;outline:none;margin-bottom:16px;" ${opts.type === 'password' ? 'inputmode="numeric" pattern="[0-9]*"' : ''}>
+          <div style="display:flex;gap:8px;">
+            <button id="_dlgCancel" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">취소</button>
+            <button id="_dlgOk" style="flex:1;padding:10px;background:var(--green);color:#000;border:none;border-radius:8px;font-weight:900;font-size:13px;cursor:pointer;">확인</button>
+          </div>
+        </div>
+      `;
+      overlay.style.display = 'flex';
+      const input = document.getElementById('_dlgInput');
+      setTimeout(() => input.focus(), 50);
+      const close = v => { overlay.style.display = 'none'; overlay.innerHTML = ''; resolve(v); };
+      document.getElementById('_dlgCancel').onclick = () => close(null);
+      document.getElementById('_dlgOk').onclick = () => close(input.value);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') close(input.value); if (e.key === 'Escape') close(null); });
+    });
+  }
+  
+  /* ═══════════════════════ 마스터 비번 인증 ═══════════════════════ */
+  async function sha256(str) {
+    const enc = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  
+  let _masterVerified = false; // 세션 내 한 번 인증하면 유지
+  
+  async function ensureMasterAuth() {
+    if (_masterVerified) return true;
+    
+    const pw = await showPrompt('매니저 기능을 사용하려면 마스터 비밀번호가 필요합니다', {
+      title: '🔐 매니저 인증',
+      type: 'password',
+      placeholder: '마스터 비밀번호 4자리',
+      maxlength: 4
+    });
+    if (!pw) return false;
+    
+    try {
+      const sysDoc = await db.collection("settings").doc("system").get();
+      if (!sysDoc.exists) { showToast('마스터 비번이 설정되지 않았습니다', 'error'); return false; }
+      const hash = await sha256(pw);
+      if (hash === sysDoc.data().masterPwHash) {
+        _masterVerified = true;
+        showToast('인증 완료', 'success');
+        return true;
+      } else {
+        showToast('비밀번호 불일치', 'error');
+        return false;
+      }
+    } catch (err) {
+      showToast('인증 오류: ' + err.message, 'error');
+      return false;
+    }
+  }
+  
+  /* ═══════════════════════ 데이터 로드 & 렌더 ═══════════════════════ */
+  let allMembers = [];
+  let currentTab = 'active';
+  
+  async function loadMembers() {
+    try {
+      const snap = await db.collection("users").get();
+      allMembers = [];
+      snap.forEach(doc => {
+        const data = doc.data();
+        data.id = doc.id;
+        data.status = data.status || 'active'; // 기존 회원은 active 기본값
+        allMembers.push(data);
+      });
+      
+      // 카운트 업데이트
+      const counts = { active: 0, inactive: 0, retired: 0 };
+      allMembers.forEach(m => { counts[m.status] = (counts[m.status] || 0) + 1; });
+      document.getElementById('countActive').textContent = counts.active;
+      document.getElementById('countInactive').textContent = counts.inactive;
+      document.getElementById('countRetired').textContent = counts.retired;
+      document.getElementById('tabCountActive').textContent = '(' + counts.active + ')';
+      document.getElementById('tabCountInactive').textContent = '(' + counts.inactive + ')';
+      document.getElementById('tabCountRetired').textContent = '(' + counts.retired + ')';
+      
+      filterMembers();
+    } catch (err) {
+      document.getElementById('memberList').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div>데이터 로드 실패<br>' + escapeHtml(err.message) + '</div>';
+    }
+  }
+  
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    filterMembers();
+  }
+  
+  function filterMembers() {
+    const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+    const sortBy = document.getElementById('sortSelect').value;
+    
+    let filtered = allMembers.filter(m => m.status === currentTab);
+    if (q) filtered = filtered.filter(m => (m.name || '').toLowerCase().includes(q));
+    
+    // 정렬
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'ovr': return (b.ovr || 0) - (a.ovr || 0);
+        case 'rank': return (b.rankScore || 0) - (a.rankScore || 0);
+        case 'recent': {
+          const ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+          const tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+          return tb - ta;
+        }
+        case 'name':
+        default: return (a.name || '').localeCompare(b.name || '', 'ko');
+      }
+    });
+    
+    renderList(filtered);
+  }
+  
+  function renderList(list) {
+    const el = document.getElementById('memberList');
+    if (!list.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div>${currentTab === 'active' ? '활성 회원이 없습니다' : currentTab === 'inactive' ? '휴면 회원이 없습니다' : '탈퇴 회원이 없습니다'}</div>`;
+      return;
+    }
+    
+    let html = '';
+    list.forEach(m => {
+      const safeUrl = safePhotoUrl(m.photoUrl);
+      const photo = safeUrl || './sublogo2.png';
+      const padding = safeUrl ? '' : 'padding:6px;';
+      const pos = escapeHtml(m.pos || 'MF');
+      const statusClass = m.status === 'inactive' ? 'is-inactive' : (m.status === 'retired' ? 'is-retired' : '');
+      
+      let badge = '';
+      if (m.status === 'inactive') badge = '<span class="member-badge b-inactive">휴면</span>';
+      else if (m.status === 'retired') badge = '<span class="member-badge b-retired">탈퇴</span>';
+      
+      html += `
+        <div class="member-card ${statusClass}" onclick="openDetail('${escapeHtml(m.id)}')">
+          <div class="member-avatar">
+            <img src="${escapeHtml(photo)}" style="${padding} object-fit: ${safeUrl ? 'cover' : 'contain'};">
+          </div>
+          <div class="member-info">
+            <div class="member-name-row">
+              <span class="member-name">${escapeHtml(m.name || '—')}</span>
+              ${badge}
+            </div>
+            <div class="member-meta">
+              <span class="member-pos pos-${pos}">${pos}</span>
+              <span class="dot-sep">·</span>
+              <span>랭킹 ${m.rankScore || 0}점</span>
+              ${m.contact ? '<span class="dot-sep">·</span><span>📱</span>' : ''}
+            </div>
+          </div>
+          <div class="member-ovr">${m.ovr || 0}</div>
+        </div>
+      `;
+    });
+    el.innerHTML = html;
+  }
+  
+  /* ═══════════════════════ 상세 모달 ═══════════════════════ */
+  let _currentMemberId = null;
+  
+  async function openDetail(memberId) {
+    _currentMemberId = memberId;
+    const m = allMembers.find(x => x.id === memberId);
+    if (!m) return;
+    
+    const safeUrl = safePhotoUrl(m.photoUrl);
+    const photo = safeUrl || './sublogo2.png';
+    const padding = safeUrl ? '' : 'padding:8px;';
+    const pos = escapeHtml(m.pos || 'MF');
+    
+    // 연락처/Instagram은 전체 공개 (회원 간 소통 활성화)
+    // memo는 매니저 전용 유지
+    const showContact = m.contact ? escapeHtml(m.contact) : '';
+    const showInsta = m.instagram ? escapeHtml(m.instagram) : '';
+    const maskedMemo = m.memo ? (_masterVerified ? escapeHtml(m.memo) : '🔒 매니저 인증 후 열람 가능') : '';
+    
+    const createdDate = m.createdAt && m.createdAt.seconds 
+      ? new Date(m.createdAt.seconds * 1000).toLocaleDateString('ko-KR') 
+      : '—';
+    
+    // 액션 버튼 구성
+    let actionButtons = '';
+    if (m.status === 'active') {
+      actionButtons = `
+        <div class="action-buttons">
+          <button class="btn-action btn-inactive" onclick="changeStatus('inactive')">😴 휴면 전환</button>
+          <button class="btn-action btn-retire" onclick="changeStatus('retired')">🚪 탈퇴 처리</button>
+        </div>
+        <div class="action-buttons cols-1" style="margin-top:8px;">
+          <button class="btn-action btn-edit" onclick="openEditModal()">📝 정보 수정</button>
+        </div>
+      `;
+    } else if (m.status === 'inactive') {
+      actionButtons = `
+        <div class="action-buttons">
+          <button class="btn-action btn-active" onclick="changeStatus('active')">✅ 활성 복귀</button>
+          <button class="btn-action btn-retire" onclick="changeStatus('retired')">🚪 탈퇴 처리</button>
+        </div>
+        <div class="action-buttons cols-1" style="margin-top:8px;">
+          <button class="btn-action btn-edit" onclick="openEditModal()">📝 정보 수정</button>
+        </div>
+      `;
+    } else if (m.status === 'retired') {
+      actionButtons = `
+        <div class="action-buttons cols-1">
+          <button class="btn-action btn-restore" onclick="changeStatus('active')">↩️ 복귀 처리</button>
+        </div>
+      `;
+    }
+    
+    const html = `
+      <div class="detail-header">
+        <div class="detail-avatar"><img src="${escapeHtml(photo)}" style="${padding} object-fit: ${safeUrl ? 'cover' : 'contain'};"></div>
+        <div class="detail-name-box">
+          <div class="detail-name">${escapeHtml(m.name || '—')}</div>
+          <div class="detail-stats-mini">
+            <span><span class="member-pos pos-${pos}" style="font-size:8px;padding:2px 5px;">${pos}</span></span>
+            <span>OVR <strong>${m.ovr || 0}</strong></span>
+            <span>랭킹 <strong>${m.rankScore || 0}</strong>점</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="detail-section">
+        <div class="detail-section-title">기본 정보</div>
+        <div class="detail-row">
+          <span class="detail-row-label">가입일</span>
+          <span class="detail-row-value">${createdDate}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row-label">MOM</span>
+          <span class="detail-row-value">${(m.awards && m.awards.mom) || 0}회</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row-label">2위/3위</span>
+          <span class="detail-row-value">${(m.awards && m.awards.sec) || 0}회 / ${(m.awards && m.awards.third) || 0}회</span>
+        </div>
+      </div>
+      
+      <div class="detail-section">
+        <div class="detail-section-title">연락처</div>
+        <div class="detail-row">
+          <span class="detail-row-label">📱 전화</span>
+          <span class="detail-row-value ${!m.contact ? 'detail-row-empty' : ''}">${m.contact ? `<a href="tel:${escapeHtml(m.contact)}" style="color:var(--green);text-decoration:none;">${showContact}</a>` : '미등록'}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row-label">📷 Instagram</span>
+          <span class="detail-row-value ${!m.instagram ? 'detail-row-empty' : ''}">${m.instagram ? `<a href="https://instagram.com/${escapeHtml(m.instagram)}" target="_blank" rel="noopener" style="color:var(--green);text-decoration:none;">@${showInsta}</a>` : '미등록'}</span>
+        </div>
+      </div>
+      
+      ${(m.memo || _masterVerified) ? `
+      <div class="detail-section">
+        <div class="detail-section-title">매니저 메모 ${!_masterVerified ? '🔒' : ''}</div>
+        <div class="detail-row" style="flex-direction:column;align-items:flex-start;">
+          <span class="detail-row-value ${!m.memo ? 'detail-row-empty' : ''}" style="text-align:left;margin-left:0;white-space:pre-wrap;">${maskedMemo || '메모 없음'}</span>
+        </div>
+      </div>
+      ` : ''}
+      
+      ${actionButtons}
+    `;
+    
+    document.getElementById('detailContent').innerHTML = html;
+    document.getElementById('detailModal').classList.add('show');
+  }
+  
+  function closeDetailModal() {
+    document.getElementById('detailModal').classList.remove('show');
+    _currentMemberId = null;
+  }
+  
+  /* ═══════════════════════ 상태 변경 ═══════════════════════ */
+  async function changeStatus(newStatus) {
+    if (!_currentMemberId) return;
+    const m = allMembers.find(x => x.id === _currentMemberId);
+    if (!m) return;
+    
+    // 매니저 인증 필수
+    const authed = await ensureMasterAuth();
+    if (!authed) return;
+    
+    const statusKo = { active: '활성', inactive: '휴면', retired: '탈퇴' };
+    const newKo = statusKo[newStatus];
+    
+    const confirmMsg = 
+      `${m.name}님을 ${newKo} 상태로 변경합니다.\n\n` +
+      (newStatus === 'retired' ? '⚠️ 탈퇴 회원은 랭킹/출석률/참가 신청에서 제외됩니다.\n(데이터는 보존되며 언제든 복귀 가능)\n\n' : '') +
+      '계속하시겠습니까?';
+    
+    const ok = await showConfirm(confirmMsg, {
+      title: newKo + ' 상태 변경',
+      danger: newStatus === 'retired',
+      confirmText: '변경'
+    });
+    if (!ok) return;
+    
+    try {
+      await db.collection("users").doc(_currentMemberId).update({ 
+        status: newStatus,
+        contact: m.contact || '',
+        instagram: m.instagram || '',
+        memo: m.memo || ''
+      });
+      showToast(m.name + '님 ' + newKo + ' 상태로 변경됨', 'success');
+      closeDetailModal();
+      loadMembers();
+    } catch (err) {
+      showToast('변경 실패: ' + err.message, 'error');
+    }
+  }
+  
+  /* ═══════════════════════ 편집 모달 ═══════════════════════ */
+  async function openEditModal() {
+    const authed = await ensureMasterAuth();
+    if (!authed) return;
+    
+    const m = allMembers.find(x => x.id === _currentMemberId);
+    if (!m) return;
+    
+    document.getElementById('editContact').value = m.contact || '';
+    document.getElementById('editInstagram').value = m.instagram || '';
+    document.getElementById('editMemo').value = m.memo || '';
+    
+    closeDetailModal();
+    document.getElementById('editModal').classList.add('show');
+  }
+  
+  function closeEditModal() {
+    document.getElementById('editModal').classList.remove('show');
+  }
+  
+  async function saveEdit() {
+    if (!_currentMemberId) return;
+    const m = allMembers.find(x => x.id === _currentMemberId);
+    if (!m) return;
+    
+    const contact = (document.getElementById('editContact').value || '').trim().substring(0, 50);
+    const instagram = (document.getElementById('editInstagram').value || '').trim().replace(/^@/, '').substring(0, 50);
+    const memo = (document.getElementById('editMemo').value || '').trim().substring(0, 500);
+    
+    try {
+      await db.collection("users").doc(_currentMemberId).update({
+        contact, instagram, memo,
+        status: m.status || 'active'
+      });
+      showToast('저장 완료', 'success');
+      closeEditModal();
+      loadMembers();
+    } catch (err) {
+      showToast('저장 실패: ' + err.message, 'error');
+    }
+  }
+  
+  /* ═══════════════════════ 기타 ═══════════════════════ */
+  function goBack() { 
+    if (document.referrer && document.referrer.includes(location.hostname)) history.back();
+    else window.location.href = 'index.html';
+  }
+  
+  // 모달 배경 클릭 시 닫기
+  document.querySelectorAll('.modal-bg').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
+  });
+  
+  // ESC 키로 모달 닫기
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-bg.show').forEach(el => el.classList.remove('show'));
+    }
+  });
+  
+  // 초기 로드
+  window.addEventListener('load', loadMembers);
+</script>
+
+<!-- ─── FAB 플로팅 메뉴 ─── -->
+<div class="fab-wrapper" id="fabWrapper">
+  <button class="fab-toggle-btn" onclick="toggleFab(event)" aria-label="메뉴">
+    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+  <div class="fab-expand-menu">
+    <button class="fab-btn-primary" onclick="location.href='index.html'">홈으로</button>
+    <button class="fab-btn-secondary" onclick="location.href='profile.html'">프로필</button>
+    <button class="fab-btn-secondary" onclick="location.href='attendance.html'">출석률</button>
+    <button class="fab-btn-secondary" onclick="location.href='ranking.html'">랭킹</button>
+  </div>
+</div>
+
+
+<script>
+  // FAB 토글 (공통)
+  function toggleFab(e) { 
+    if(e) e.stopPropagation(); 
+    document.getElementById('fabWrapper').classList.toggle('open'); 
+  }
+  document.addEventListener('click', function(event) {
+    const fab = document.getElementById('fabWrapper');
+    if (fab && fab.classList.contains('open') && !fab.contains(event.target)) {
+      fab.classList.remove('open');
+    }
+  });
+</script>
+
+</body>
+</html>

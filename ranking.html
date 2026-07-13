@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <link rel="icon" type="image/png" href="./sublogo2.png">
+  <link rel="shortcut icon" href="./sublogo2.png">
+
+  <link rel="apple-touch-icon" href="./sublogo2.png">
+  <meta name="apple-mobile-web-app-title" content="FCMON">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FCMON - 랭킹 및 매치 기록</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./common.css">
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    /* 페이지 전용 (공통 토큰/리셋/접근성은 common.css 참조) */
+    .container{max-width:480px;margin:0 auto;padding:0 16px 100px;}
+    
+    .header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px}
+    .top-logo-img { height: 35px; width: auto; object-fit: contain; }
+    
+    .back-btn{width:40px;height:40px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--text)}
+
+    .tabs { display: flex; gap: 10px; margin-bottom: 24px; background: var(--bg2); padding: 6px; border-radius: 16px; border: 1px solid var(--border); }
+    .tab-btn { flex: 1; padding: 14px 0; border-radius: 12px; font-size: 15px; font-weight: 900; background: transparent; color: var(--muted); border: none; cursor: pointer; transition: 0.2s; }
+    .tab-btn.active { background: var(--green); color: #000; box-shadow: 0 4px 10px rgba(0,230,118,0.2); }
+
+    .period-filter { display: flex; gap: 8px; align-items: center; margin: -10px 0 18px; }
+    .period-select { flex: 1; min-width: 0; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 11px 12px; border-radius: 11px; font-size: 13px; font-weight: 800; outline: none; -webkit-appearance: none; appearance: none; }
+    .period-select:focus { border-color: rgba(0,230,118,0.35); }
+    .period-summary { font-size: 11px; color: var(--muted2); margin: -8px 2px 14px; line-height: 1.5; }
+    .period-summary strong { color: var(--green); font-weight: 900; }
+
+    .list-section { display: none; animation: fadeIn 0.3s ease; }
+    .list-section.show { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .rank-card { background: var(--bg3); border-radius: 16px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; border: 1px solid var(--border); }
+    .rank-num { width: 32px; font-size: 18px; font-weight: 900; color: var(--muted); text-align: center; margin-right: 12px; }
+    .rank-num.gold { color: var(--gold); font-size: 24px; }
+    .rank-num.silver { color: var(--silver); font-size: 22px; }
+    .rank-num.bronze { color: var(--bronze); font-size: 20px; }
+    .rank-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--bg); overflow: hidden; margin-right: 16px; display: flex; align-items: center; justify-content: center; font-size: 20px;}
+    .rank-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .rank-info { flex: 1; }
+    .rank-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .rank-pos { font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; color: white; margin-right: 4px; }
+    .pos-FW { background-color: #FF4757; } .pos-MF { background-color: #2ED573; } .pos-DF { background-color: #1E90FF; } .pos-GK { background-color: #FFA502; }
+    .rank-ovr { font-size: 11px; color: var(--muted); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .rank-score { font-size: 20px; font-weight: 900; color: var(--green); }
+    .rank-meta { font-size: 10px; color: var(--muted2); margin-top: 4px; line-height: 1.45; }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+    .history-item { background: var(--bg3); border-radius: 10px; padding: 12px 16px; border: 1px solid var(--border); border-left: 3px solid var(--green); display: flex; flex-direction: column; gap: 4px; }
+    .history-item-clickable { cursor: pointer; transition: all 0.2s; }
+    .history-item-clickable:hover { border-color: var(--green); transform: translateY(-1px); }
+    .history-item-clickable:active { transform: translateY(0); }
+    .history-detail-icon { color: var(--green); font-size: 18px; font-weight: 900; margin-left: 6px; vertical-align: middle; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; }
+    .history-date { font-size: 12px; color: var(--muted); font-family: monospace; }
+    .history-loc { font-size: 14px; font-weight: 700; color: var(--text); }
+    .history-awards-inline { font-size: 12px; color: var(--muted); margin-top: 4px;}
+    .history-awards-inline strong { color: var(--green); font-weight: 700; }
+    .win-badge { display: inline-block; background-color: rgba(255,165,2,0.1); color: #FFA502; border: 1px solid rgba(255,165,2,0.3); padding: 2px 6px; border-radius: 6px; font-size: 11px; font-weight: 900; margin-bottom: 6px; align-self: flex-start; }
+
+    /* 📜 매치 상세 모달 */
+    .detail-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 3000;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-top: calc(env(safe-area-inset-top, 0px) + 72px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
+      box-sizing: border-box;
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    #matchDetailModal.show .detail-modal-overlay { opacity: 1; }
+    .detail-modal-overlay.show { opacity: 1; }
+    #matchDetailModal.show .detail-modal-content { transform: translateY(0); opacity: 1; }
+    .detail-modal-content {
+      background: var(--bg2);
+      width: 100%;
+      max-width: 480px;
+      border-radius: 24px 24px 0 0;
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 158px);
+      overflow-y: auto;
+      transform: translateY(100%);
+      opacity: 0;
+      transition: transform 0.3s cubic-bezier(0.32, 1, 0.23, 1), opacity 0.25s;
+      box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
+    }
+    @supports not (height: 100dvh) {
+      .detail-modal-content { max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 158px); }
+    }
+    @media (min-width: 768px) {
+      .detail-modal-overlay { align-items: center; padding: 20px; }
+      .detail-modal-content { 
+        border-radius: 20px; 
+        border-bottom: 1px solid var(--border); 
+        max-height: 88vh;
+        transform: scale(0.95);
+      }
+      #matchDetailModal.show .detail-modal-content { transform: scale(1); }
+    }
+    .detail-modal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .detail-modal-title { font-size: 16px; font-weight: 900; color: var(--green); margin-bottom: 2px; }
+    .detail-modal-date { font-size: 12px; color: var(--muted); font-family: monospace; }
+    .detail-modal-close { background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; flex-shrink: 0; }
+    /* ✏️ 매치 기록 수정 모달 */
+    #editAwardsModal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 4100; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.25s; }
+    #editAwardsModal.show { opacity: 1; }
+    .edit-modal-content { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 20px; max-width: 420px; width: 100%; max-height: 92vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.32, 1, 0.23, 1); }
+    #editAwardsModal.show .edit-modal-content { transform: scale(1); }
+    .edit-field { margin-bottom: 14px; }
+    .edit-field-label { font-size: 11px; color: var(--muted); font-weight: 700; margin-bottom: 6px; letter-spacing: 1px; display: flex; align-items: center; gap: 4px; }
+    .edit-field select { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; -webkit-appearance: none; appearance: none; }
+    .edit-warning { background: rgba(255,165,2,0.1); border: 1px solid rgba(255,165,2,0.3); color: #FFA502; padding: 10px 12px; border-radius: 8px; font-size: 11px; line-height: 1.5; margin: 12px 0 16px; }
+    .edit-btn-row { display: flex; gap: 8px; margin-top: 16px; }
+    .edit-btn-cancel { flex: 1; padding: 12px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; }
+    .edit-btn-save { flex: 2; padding: 12px; background: #FFA502; color: #000; border: none; border-radius: 10px; font-weight: 900; font-size: 14px; cursor: pointer; }
+    .edit-btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .detail-share-btn { background: transparent; border: 1px solid var(--border); color: var(--green); cursor: pointer; padding: 6px 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+    .detail-share-btn:hover { background: rgba(0,230,118,0.1); border-color: var(--green); }
+    .detail-share-btn:active { transform: scale(0.92); }
+    .detail-edit-btn { background: transparent; border: 1px solid var(--border); color: #FFA502; cursor: pointer; padding: 6px 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+    .detail-edit-btn:hover { background: rgba(255,165,2,0.1); border-color: #FFA502; }
+    .detail-edit-btn:active { transform: scale(0.92); }
+    
+    /* 📱 공유 카드 모달 */
+    #shareCardModal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 4000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.25s; }
+    #shareCardModal.show { opacity: 1; }
+    .share-modal-overlay { width: 100%; display: flex; align-items: center; justify-content: center; }
+    .share-modal-content { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 16px; max-width: 400px; width: 100%; max-height: 92vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.32, 1, 0.23, 1); }
+    #shareCardModal.show .share-modal-content { transform: scale(1); }
+    
+    .detail-awards { display: flex; flex-direction: column; gap: 6px; background: var(--bg3); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+    .detail-award-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text); }
+    .detail-award-item strong { color: var(--green); font-weight: 900; }
+    .detail-award-icon { font-size: 16px; }
+    
+    .detail-teams { display: flex; flex-direction: column; gap: 10px; }
+    .detail-team { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+    .detail-team-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+    .detail-team-name { font-size: 14px; font-weight: 900; color: var(--text); }
+    .detail-team-avg { font-size: 11px; font-weight: 700; color: var(--green); background: rgba(0,230,118,0.1); padding: 3px 8px; border-radius: 10px; }
+    .detail-jersey { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted2); margin-top: 6px; margin-bottom: 4px; }
+    .detail-jersey-dot { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); flex-shrink: 0; }
+    .detail-players { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .detail-player { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg2); border-radius: 8px; }
+    .detail-player-photo { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--bg); }
+    .detail-player-pos { font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; min-width: 26px; text-align: center; flex-shrink: 0; color: #fff; }
+    .detail-player-pos.pos-FW { background: var(--pos-fw, #FF4757); }
+    .detail-player-pos.pos-MF { background: var(--pos-mf, #2ED573); }
+    .detail-player-pos.pos-DF { background: var(--pos-df, #1E90FF); }
+    .detail-player-pos.pos-GK { background: var(--pos-gk, #FFA502); }
+    .detail-player-name { flex: 1; font-size: 13px; font-weight: 700; color: var(--text); min-width: 0; }
+    .detail-player-ovr { font-size: 12px; font-weight: 900; color: var(--green); }
+    .detail-guest-tag { display: inline-block; background: rgba(64,196,255,0.15); color: #40C4FF; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-left: 6px; }
+
+    .pagination { display: flex; justify-content: center; gap: 6px; margin-top: 24px; margin-bottom: 24px; }
+    .page-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .page-btn.active { background: var(--green); color: #000; border-color: var(--green); }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, var(--card) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 16px; margin-bottom: 12px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .loading { text-align: center; color: var(--muted); padding: 40px 0; font-size: 14px; }
+
+    #popupOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+    .popup-box{background:var(--bg2);width:90%;max-width:400px;border-radius:22px;padding:28px 24px;border:1px solid rgba(0,230,118,0.3);text-align:center;animation:popupIn .3s ease}
+    @keyframes popupIn{from{opacity:0;transform:scale(.92) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+      </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img" loading="eager">
+    <div class="back-btn" onclick="goBack()">←</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="btnRanking" onclick="switchTab('ranking')">🏆 선수 랭킹</button>
+    <button class="tab-btn" id="btnHistory" onclick="switchTab('history')">📋 매치 기록</button>
+    <button class="tab-btn" id="btnReport" onclick="switchTab('report')">📊 월간 리포트</button>
+  </div>
+
+  <div id="periodFilter" class="period-filter">
+    <select id="periodModeSelect" class="period-select" onchange="setPeriodMode(this.value)">
+      <option value="month">월별</option>
+      <option value="quarter">분기별</option>
+      <option value="year">연도별</option>
+      <option value="all">전체</option>
+    </select>
+    <select id="periodValueSelect" class="period-select" onchange="setPeriodValue(this.value)">
+      <option value="">기간 선택</option>
+    </select>
+  </div>
+  <div id="periodSummary" class="period-summary"></div>
+
+  <div id="rankingView" class="list-section show">
+    <div id="rankSkeleton">
+      <div class="skeleton" style="height:80px;"></div>
+      <div class="skeleton" style="height:80px;"></div>
+      <div class="skeleton" style="height:80px;"></div>
+    </div>
+    <div id="rankingList"></div>
+  </div>
+
+  <div id="historyView" class="list-section">
+    <div id="historySkeleton">
+      <div class="skeleton" style="height:90px;"></div>
+      <div class="skeleton" style="height:90px;"></div>
+      <div class="skeleton" style="height:90px;"></div>
+    </div>
+    <div id="historyList"></div>
+  </div>
+  
+  <div id="reportView" class="list-section">
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px;">
+      <select id="reportMonthSelect" onchange="renderMonthlyReport()" style="flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:10px; font-size:14px; font-weight:700; outline:none;">
+        <option value="">월을 선택하세요</option>
+      </select>
+    </div>
+    <div id="reportContainer"></div>
+  </div>
+</div>
+
+<div id="popupOverlay">
+  <div class="popup-box">
+    <div style="font-size:28px; margin-bottom:12px;">📢</div>
+    <div style="font-size:16px; font-weight:900; color:var(--green); margin-bottom:16px;">공지사항</div>
+    <div id="popupContent" style="font-size:14px; color:var(--text); line-height:1.8; white-space:pre-wrap; margin-bottom:8px; max-height:300px; overflow-y:auto; text-align:left; padding:16px; background:var(--bg3); border-radius:12px; border:1px solid var(--border);"></div>
+    <div id="popupExpire" style="font-size:11px; color:var(--muted); margin:12px 0 20px;"></div>
+    <button onclick="dismissPopup()" style="width:100%; height:50px; background:var(--green); color:#000; border:none; border-radius:12px; font-weight:900; font-size:15px; cursor:pointer;">✅ 확인했습니다</button>
+  </div>
+</div>
+
+<script>
+  // ★ Firebase 초기화
+  const firebaseConfig = {
+    apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU",
+    authDomain: "fcmon-96ec1.firebaseapp.com",
+    projectId: "fcmon-96ec1",
+    storageBucket: "fcmon-96ec1.firebasestorage.app",
+    messagingSenderId: "912620232254",
+    appId: "1:912620232254:web:b86a27fa9f733f2c137b6f"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  /* ═══════════════════════ 🔐 마스터 비밀번호 인증 ═══════════════════════ */
+  let _cachedMasterHash = null;
+  
+  async function sha256(text) {
+    const buf = new TextEncoder().encode(text);
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  
+  async function verifyMasterPw(pw) {
+    if (!pw) return false;
+    try {
+      if (!_cachedMasterHash) {
+        const doc = await db.collection("settings").doc("system").get();
+        if (!doc.exists || !doc.data().masterPwHash) {
+          console.warn('[Auth] masterPwHash가 설정되지 않았습니다.');
+          return false;
+        }
+        _cachedMasterHash = doc.data().masterPwHash;
+      }
+      const inputHash = await sha256(pw);
+      return inputHash === _cachedMasterHash;
+    } catch (err) {
+      console.error('[Auth] 인증 확인 중 오류:', err);
+      return false;
+    }
+  }
+
+  /* ═══════════════════════ 🛡 XSS 방어 헬퍼 ═══════════════════════════════════ */
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function safePhotoUrl(url) {
+    if (!url) return '';
+    const s = String(url).trim();
+    if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(s)) return s;
+    if (/^https?:\/\//i.test(s)) return s;
+    return '';
+  }
+  /* ═════════════════════════════════════════════════════════════════════════════ */
+
+  let globalHistoryData = [];
+  let currentHistoryData = [];
+  let globalRankedPlayers = [];
+  let globalUsersByName = {};
+  let currentHistoryPage = 1;
+  let currentTab = 'ranking';
+  let selectedPeriodMode = 'month';
+  let selectedPeriodValue = '';
+  const itemsPerPage = 10;
+  const TEAM_NAMES = ['레드팀','블루팀','그린팀','옐로팀','화이트팀','블랙팀','오렌지팀','퍼플팀'];
+  const TEAM_COLORS = [{border:'#d63031'}, {border:'#0984e3'}, {border:'#00b894'}, {border:'#fdcb6e'}, {border:'#636e72'}, {border:'#2d3436'}, {border:'#e17055'}, {border:'#9b59b6'}];
+
+  function getHistoryAward(match, field) {
+    if (!match) return '';
+    if (field === 'mom') return match.mom || match.momName || '';
+    if (field === 'second') return match.second || match.secondName || match.secName || match.sec || '';
+    if (field === 'third') return match.third || match.thirdName || '';
+    if (field === 'winTeam') return match.winTeam || match.winTeamName || '';
+    return '';
+  }
+
+  function getMatchDate(match) {
+    if (!match || !match.date) return null;
+    const d = new Date(match.date);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function getMonthKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  function getQuarterKey(date) {
+    return `${date.getFullYear()}-Q${Math.floor(date.getMonth()/3) + 1}`;
+  }
+
+  function getYearKey(date) {
+    return String(date.getFullYear());
+  }
+
+  function getPeriodKey(match, mode) {
+    const d = getMatchDate(match);
+    if (!d) return '';
+    if (mode === 'month') return getMonthKey(d);
+    if (mode === 'quarter') return getQuarterKey(d);
+    if (mode === 'year') return getYearKey(d);
+    return 'all';
+  }
+
+  function formatPeriodLabel(mode, value) {
+    if (mode === 'all') return '전체 기간';
+    if (!value) return '기간 선택';
+    if (mode === 'month') {
+      const [y, m] = value.split('-');
+      return `${y}년 ${parseInt(m, 10)}월`;
+    }
+    if (mode === 'quarter') {
+      const [y, q] = value.split('-Q');
+      return `${y}년 ${q}분기`;
+    }
+    return `${value}년`;
+  }
+
+  function getAvailablePeriods(mode) {
+    if (mode === 'all') return ['all'];
+    const keys = new Set();
+    (globalHistoryData || []).forEach(match => {
+      const key = getPeriodKey(match, mode);
+      if (key) keys.add(key);
+    });
+    return Array.from(keys).sort().reverse();
+  }
+
+  function getFilteredHistoryData() {
+    if (selectedPeriodMode === 'all') return globalHistoryData.slice();
+    return globalHistoryData.filter(match => getPeriodKey(match, selectedPeriodMode) === selectedPeriodValue);
+  }
+
+  function updatePeriodControls() {
+    const filter = document.getElementById('periodFilter');
+    const summary = document.getElementById('periodSummary');
+    const modeSelect = document.getElementById('periodModeSelect');
+    const valueSelect = document.getElementById('periodValueSelect');
+    if (!filter || !summary || !modeSelect || !valueSelect) return;
+
+    const showFilter = currentTab !== 'report';
+    filter.style.display = showFilter ? 'flex' : 'none';
+    summary.style.display = showFilter ? 'block' : 'none';
+    if (!showFilter) return;
+
+    modeSelect.value = selectedPeriodMode;
+    const periods = getAvailablePeriods(selectedPeriodMode);
+    if (selectedPeriodMode === 'all') {
+      selectedPeriodValue = 'all';
+      valueSelect.disabled = true;
+      valueSelect.innerHTML = '<option value="all">전체 기간</option>';
+    } else {
+      valueSelect.disabled = false;
+      if (!selectedPeriodValue || !periods.includes(selectedPeriodValue)) selectedPeriodValue = periods[0] || '';
+      valueSelect.innerHTML = periods.length
+        ? periods.map(key => `<option value="${escapeHtml(key)}">${escapeHtml(formatPeriodLabel(selectedPeriodMode, key))}</option>`).join('')
+        : '<option value="">기간 없음</option>';
+      valueSelect.value = selectedPeriodValue;
+    }
+
+    const periodMatches = getFilteredHistoryData();
+    summary.innerHTML = `<strong>${escapeHtml(formatPeriodLabel(selectedPeriodMode, selectedPeriodValue))}</strong> · 종료 매치 ${periodMatches.length}개`;
+  }
+
+  function setPeriodMode(mode) {
+    selectedPeriodMode = mode;
+    selectedPeriodValue = '';
+    currentHistoryPage = 1;
+    renderCurrentViews();
+  }
+
+  function setPeriodValue(value) {
+    selectedPeriodValue = value;
+    currentHistoryPage = 1;
+    renderCurrentViews();
+  }
+
+  function renderCurrentViews() {
+    updatePeriodControls();
+    renderRankingList();
+    if (globalHistoryData.length === 0) {
+      document.getElementById('historyList').innerHTML = '<div class="loading">아직 종료된 매치 기록이 없습니다.</div>';
+    } else {
+      displayHistoryPage(currentHistoryPage);
+    }
+  }
+
+  window.onload = function() {
+    loadSettingsRealtime();
+    loadRankingsRealtime();
+    loadMatchHistoryRealtime();
+  };
+
+  /* ── 팝업 공지 연동 ── */
+  function loadSettingsRealtime() {
+    db.collection("settings").doc("system").onSnapshot((doc) => {
+      if (doc.exists && doc.data().popup && doc.data().popup.text) {
+        const popup = doc.data().popup;
+        const now = new Date();
+        const exp = popup.expireDate ? new Date(popup.expireDate + 'T23:59:59') : null;
+        if (!exp || now <= exp) {
+          const key = 'fcmon_popup_' + (popup.createdAt || '').replace(/[^a-zA-Z0-9]/g, '');
+          if (localStorage.getItem(key) !== 'dismissed') {
+            document.getElementById('popupContent').textContent = popup.text;
+            document.getElementById('popupExpire').textContent = popup.expireDate ? '게시 기한: ' + popup.expireDate + '까지' : '';
+            document.getElementById('popupOverlay').style.display = 'flex';
+            window._popupKey = key;
+          }
+        }
+      }
+    });
+  }
+  function dismissPopup(){ if(window._popupKey) localStorage.setItem(window._popupKey, 'dismissed'); document.getElementById('popupOverlay').style.display='none'; }
+
+  /* ── 탭 스위칭 ── */
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('btnRanking').classList.remove('active');
+    document.getElementById('btnHistory').classList.remove('active');
+    document.getElementById('btnReport').classList.remove('active');
+    document.getElementById('rankingView').classList.remove('show');
+    document.getElementById('historyView').classList.remove('show');
+    document.getElementById('reportView').classList.remove('show');
+    
+    if (tab === 'ranking') {
+      document.getElementById('btnRanking').classList.add('active');
+      document.getElementById('rankingView').classList.add('show');
+    } else if (tab === 'history') {
+      document.getElementById('btnHistory').classList.add('active');
+      document.getElementById('historyView').classList.add('show');
+    } else if (tab === 'report') {
+      document.getElementById('btnReport').classList.add('active');
+      document.getElementById('reportView').classList.add('show');
+      initMonthlyReport();
+    }
+    updatePeriodControls();
+  }
+
+  /* ── 1. 랭킹 데이터 실시간 로드 ── */
+  function loadRankingsRealtime() {
+    // rankScore가 0보다 큰 유저만 가져오기
+    db.collection("users")
+      .onSnapshot((snapshot) => {
+        document.getElementById('rankSkeleton').style.display = 'none';
+        
+        globalRankedPlayers = [];
+        globalUsersByName = {};
+        snapshot.forEach(doc => { 
+          const data = doc.data();
+          // 탈퇴 회원 제외
+          if (data.status === 'retired') return;
+          const user = { id: doc.id, ...data };
+          globalRankedPlayers.push(user);
+          if (user.name) globalUsersByName[user.name] = user;
+        });
+        renderCurrentViews();
+      }, (err) => {
+        document.getElementById('rankSkeleton').style.display = 'none';
+        document.getElementById('rankingList').innerHTML = '<div class="loading">데이터 로드 실패: ' + err.message + '</div>';
+      });
+  }
+
+  function getPlayerFromMatch(name, match) {
+    if (!name || !match || !Array.isArray(match.teams)) return null;
+    for (const team of match.teams) {
+      const player = (team.players || []).find(p => p.name === name);
+      if (player) return player;
+    }
+    return null;
+  }
+
+  function buildPeriodRanking(matches) {
+    const scores = {};
+    function ensure(name, match) {
+      if (!name) return null;
+      if (!scores[name]) {
+        const user = globalUsersByName[name] || getPlayerFromMatch(name, match) || {};
+        scores[name] = {
+          name: name,
+          pos: user.pos || 'MF',
+          ovr: user.ovr || 50,
+          photoUrl: user.photoUrl || '',
+          score: 0,
+          mom: 0,
+          sec: 0,
+          third: 0,
+          wins: 0
+        };
+      }
+      return scores[name];
+    }
+
+    matches.forEach(match => {
+      const momName = getHistoryAward(match, 'mom');
+      const secondName = getHistoryAward(match, 'second');
+      const thirdName = getHistoryAward(match, 'third');
+      const winTeamName = getHistoryAward(match, 'winTeam');
+      const mom = ensure(momName, match);
+      if (mom) { mom.score += 3; mom.mom += 1; }
+      const sec = ensure(secondName, match);
+      if (sec) { sec.score += 2; sec.sec += 1; }
+      const third = ensure(thirdName, match);
+      if (third) { third.score += 1; third.third += 1; }
+
+      if (winTeamName && Array.isArray(match.teams)) {
+        const winTeam = match.teams.find(team => team.name === winTeamName || team.isWinner);
+        if (winTeam) {
+          (winTeam.players || []).forEach(player => {
+            if (!player || !player.name || player.isGuest) return;
+            const row = ensure(player.name, match);
+            if (row) { row.score += 1; row.wins += 1; }
+          });
+        }
+      }
+    });
+
+    return Object.values(scores)
+      .filter(p => p.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if ((b.mom || 0) !== (a.mom || 0)) return (b.mom || 0) - (a.mom || 0);
+        return (b.ovr || 0) - (a.ovr || 0);
+      });
+  }
+
+  function renderRankingList() {
+    const list = document.getElementById('rankingList');
+    if (!list) return;
+
+    let rankedPlayers = [];
+    if (selectedPeriodMode === 'all') {
+      rankedPlayers = globalRankedPlayers
+        .filter(p => (p.rankScore || 0) > 0)
+        .map(p => ({
+          ...p,
+          score: p.rankScore || 0,
+          mom: (p.awards && p.awards.mom) || 0,
+          sec: (p.awards && p.awards.sec) || 0,
+          third: (p.awards && p.awards.third) || 0,
+          wins: null
+        }))
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return (b.ovr || 0) - (a.ovr || 0);
+        });
+    } else {
+      rankedPlayers = buildPeriodRanking(getFilteredHistoryData());
+    }
+
+    if (rankedPlayers.length === 0) {
+      list.innerHTML = '<div class="loading">선택한 기간에 랭킹 포인트를 획득한 선수가 없습니다.</div>';
+      return;
+    }
+
+    let html = '';
+    rankedPlayers.forEach((p, idx) => {
+      const rank = idx + 1;
+      const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+      const safeUrl = safePhotoUrl(p.photoUrl);
+      const avatar = safeUrl ? '<img src="'+escapeHtml(safeUrl)+'" loading="lazy">' : '<img src="./sublogo2.png" style="padding:6px; object-fit:contain;">';
+      const pos = escapeHtml(p.pos || 'MF');
+      const safeName = escapeHtml(p.name);
+      const safeOvr = escapeHtml(p.ovr || 50);
+      const safeScore = escapeHtml(p.score || 0);
+      const meta = selectedPeriodMode === 'all'
+        ? `MOM ${p.mom || 0} · 2위 ${p.sec || 0} · 3위 ${p.third || 0}`
+        : `MOM ${p.mom || 0} · 2위 ${p.sec || 0} · 3위 ${p.third || 0} · 우승 ${p.wins || 0}`;
+      
+      html += `<div class="rank-card">
+        <div class="rank-num ${rankClass}">${rank}</div>
+        <div class="rank-avatar">${avatar}</div>
+        <div class="rank-info">
+          <div class="rank-name">${safeName}</div>
+          <span class="rank-pos pos-${pos}">${pos}</span>
+          <span class="rank-ovr">OVR ${safeOvr}</span>
+          <div class="rank-meta">${escapeHtml(meta)}</div>
+        </div>
+        <div class="rank-score">${safeScore} <span style="font-size:12px;color:var(--muted)">pts</span></div>
+      </div>`;
+    });
+    list.innerHTML = html;
+  }
+
+  /* ── 2. 매치 기록 실시간 로드 ── */
+  function loadMatchHistoryRealtime() {
+    db.collection("matchHistory").orderBy("date", "desc").onSnapshot((snapshot) => {
+      document.getElementById('historySkeleton').style.display = 'none';
+      
+      globalHistoryData = [];
+      snapshot.forEach(doc => { globalHistoryData.push(doc.data()); });
+      
+      if (globalHistoryData.length === 0) {
+        document.getElementById('historyList').innerHTML = '<div class="loading">아직 종료된 매치 기록이 없습니다.</div>';
+        return;
+      }
+      
+      currentHistoryPage = 1;
+      renderCurrentViews();
+    }, (err) => {
+      document.getElementById('historySkeleton').style.display = 'none';
+      document.getElementById('historyList').innerHTML = '<div class="loading">데이터 로드 실패: ' + err.message + '</div>';
+    });
+  }
+
+  function displayHistoryPage(page) {
+    currentHistoryData = getFilteredHistoryData();
+    if (currentHistoryData.length === 0) {
+      document.getElementById('historyList').innerHTML = '<div class="loading">선택한 기간에는 매치 기록이 없습니다.</div>';
+      return;
+    }
+
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageData = currentHistoryData.slice(startIndex, endIndex);
+    
+    let html = '<div class="history-list">';
+    pageData.forEach((m, localIdx) => {
+      const globalIdx = startIndex + localIdx;
+      const d = new Date(m.date);
+      const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+      const momName = getHistoryAward(m, 'mom');
+      const secondName = getHistoryAward(m, 'second');
+      const thirdName = getHistoryAward(m, 'third');
+      const winTeamName = getHistoryAward(m, 'winTeam');
+      
+      let awardsText = [];
+      if (momName) awardsText.push(`🥇<strong>${escapeHtml(momName)}</strong>`);
+      if (secondName) awardsText.push(`🥈<strong>${escapeHtml(secondName)}</strong>`);
+      if (thirdName) awardsText.push(`🥉<strong>${escapeHtml(thirdName)}</strong>`);
+      const awardStr = awardsText.length > 0 ? awardsText.join('  |  ') : '기록된 선수가 없습니다';
+      const winBadge = winTeamName ? `<div class="win-badge">🏆 우승: ${escapeHtml(winTeamName)}</div>` : '';
+      const safeLocation = escapeHtml(m.location || '상무풋살');
+      
+      // teams 스냅샷이 없던 예전 기록도 matches/{gameId}/entries로 상세 복원 시도
+      const hasDetail = !!(m.gameId || (m.teams && Array.isArray(m.teams) && m.teams.length > 0));
+      const clickClass = hasDetail ? ' history-item-clickable' : '';
+      const clickHandler = hasDetail ? ` onclick="openMatchDetail(${globalIdx})"` : '';
+      const detailIcon = hasDetail ? '<span class="history-detail-icon">›</span>' : '';
+      const participantsInfo = m.totalParticipants ? ` · ${m.totalParticipants}명 참가` : '';
+      
+      html += `<div class="history-item${clickClass}"${clickHandler}>${winBadge}
+        <div class="history-header">
+          <span class="history-loc">🏟️ ${safeLocation}${participantsInfo}</span>
+          <span class="history-date">${dateStr}${detailIcon}</span>
+        </div>
+        <div class="history-awards-inline">${awardStr}</div>
+      </div>`;
+    });
+    html += '</div>';
+    html += renderPaginationButtons(currentHistoryData.length, page);
+    
+    document.getElementById('historyList').innerHTML = html;
+  }
+  
+  /* ═══════════════════════ 📜 매치 상세 모달 ═══════════════════════ */
+  async function buildTeamsFromEntries(match) {
+    if (!match || !match.gameId) return [];
+    try {
+      const snap = await db.collection("matches").doc(match.gameId).collection("entries").get();
+      const grouped = {};
+      snap.forEach(doc => {
+        const p = doc.data() || {};
+        if (p.active === false || p.canceledAt) return;
+        const teamLabel = p.teamLabel || '미정';
+        if (teamLabel === '미정') return;
+        if (!grouped[teamLabel]) grouped[teamLabel] = [];
+        grouped[teamLabel].push({
+          userId: p.userId || doc.id || '',
+          name: p.name || '',
+          pos: p.pos || 'MF',
+          ovr: p.ovr || 50,
+          photoUrl: p.photoUrl || '',
+          isGuest: String(p.userId || doc.id || '').startsWith('GUEST')
+        });
+      });
+
+      return Object.keys(grouped).sort((a, b) => {
+        const ia = TEAM_NAMES.indexOf(a);
+        const ib = TEAM_NAMES.indexOf(b);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      }).map((teamName, idx) => {
+        const players = grouped[teamName];
+        const teamIdx = TEAM_NAMES.indexOf(teamName);
+        const colorIdx = teamIdx === -1 ? idx : teamIdx;
+        const avgOvr = players.length
+          ? Math.round(players.reduce((sum, p) => sum + (Number(p.ovr) || 0), 0) / players.length)
+          : 0;
+        return {
+          teamIdx: colorIdx,
+          name: teamName,
+          color: TEAM_COLORS[colorIdx % TEAM_COLORS.length].border,
+          avgOvr: avgOvr,
+          jersey: null,
+          players: players,
+          isWinner: teamName === getHistoryAward(match, 'winTeam')
+        };
+      });
+    } catch (err) {
+      console.warn('[MatchDetail] entries 기반 팀 구성 복원 실패:', err);
+      return [];
+    }
+  }
+
+  async function openMatchDetail(idx) {
+    const existingModal = document.getElementById('matchDetailModal');
+    if (existingModal) existingModal.remove();
+
+    const match = currentHistoryData[idx] || globalHistoryData[idx];
+    if (!match) return;
+
+    let teams = Array.isArray(match.teams) ? match.teams : [];
+    if (teams.length === 0) {
+      showToast('예전 기록을 불러오는 중입니다...', 'info');
+      teams = await buildTeamsFromEntries(match);
+    }
+
+    if (!Array.isArray(teams) || teams.length === 0) {
+      showToast('상세 기록이 없는 매치입니다.', 'info');
+      return;
+    }
+    
+    try {
+      const d = new Date(match.date);
+      const dateStr = isNaN(d.getTime())
+        ? '-'
+        : `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+      const safeLocation = escapeHtml(match.location || '상무풋살');
+      const momName = getHistoryAward(match, 'mom');
+      const secondName = getHistoryAward(match, 'second');
+      const thirdName = getHistoryAward(match, 'third');
+      const winTeamName = getHistoryAward(match, 'winTeam');
+      const totalParticipants = match.totalParticipants || teams.reduce((sum, team) => sum + ((team.players && team.players.length) || 0), 0);
+    
+      // 수상 정보 헤더
+      let awardsHtml = '<div class="detail-awards">';
+      if (winTeamName) awardsHtml += `<div class="detail-award-item"><span class="detail-award-icon">🏆</span><span>우승팀 <strong>${escapeHtml(winTeamName)}</strong></span></div>`;
+      if (momName) awardsHtml += `<div class="detail-award-item"><span class="detail-award-icon">🥇</span><span>MOM <strong>${escapeHtml(momName)}</strong></span></div>`;
+      if (secondName) awardsHtml += `<div class="detail-award-item"><span class="detail-award-icon">🥈</span><span>2위 <strong>${escapeHtml(secondName)}</strong></span></div>`;
+      if (thirdName) awardsHtml += `<div class="detail-award-item"><span class="detail-award-icon">🥉</span><span>3위 <strong>${escapeHtml(thirdName)}</strong></span></div>`;
+      if (!winTeamName && !momName && !secondName && !thirdName) {
+        awardsHtml += '<div class="detail-award-item"><span>기록된 수상 정보가 없습니다</span></div>';
+      }
+      awardsHtml += '</div>';
+    
+      // 팀 구성
+      let teamsHtml = '';
+      teams.forEach(team => {
+        const borderColor = escapeHtml(team.color || '#00E676');
+        const teamName = escapeHtml(team.name || '팀');
+        const winIcon = team.isWinner ? ' 🏆' : '';
+      
+        // 유니폼 정보
+        let jerseyHtml = '';
+        if (team.jersey) {
+          const jColor = escapeHtml(team.jersey.color || '#808080');
+          const jName = escapeHtml(team.jersey.name || '');
+          jerseyHtml = `<div class="detail-jersey">
+            <span class="detail-jersey-dot" style="background:${jColor};"></span>
+            <span>👕 ${jName}</span>
+          </div>`;
+        }
+      
+        // 선수 목록
+        let playersHtml = '';
+        (Array.isArray(team.players) ? team.players : []).forEach(p => {
+          const safeUrl = safePhotoUrl(p.photoUrl);
+          const photo = safeUrl || './sublogo2.png';
+          const pName = escapeHtml(p.name || '');
+          const pPos = escapeHtml(p.pos || 'MF');
+          const pOvr = escapeHtml(p.ovr || 0);
+          const guestBadge = p.isGuest ? '<span class="detail-guest-tag">용병</span>' : '';
+          playersHtml += `<div class="detail-player">
+            <img src="${escapeHtml(photo)}" class="detail-player-photo" alt="">
+            <span class="detail-player-pos pos-${pPos}">${pPos}</span>
+            <span class="detail-player-name">${pName}${guestBadge}</span>
+            <span class="detail-player-ovr">${pOvr}</span>
+          </div>`;
+        });
+        if (!playersHtml) {
+          playersHtml = '<div class="detail-player"><span class="detail-player-name">선수 기록 없음</span></div>';
+        }
+      
+        teamsHtml += `<div class="detail-team" style="border-top: 3px solid ${borderColor};">
+          <div class="detail-team-header">
+            <span class="detail-team-name">${teamName}${winIcon}</span>
+            <span class="detail-team-avg">평균 ${team.avgOvr || 0}</span>
+          </div>
+          ${jerseyHtml}
+          <div class="detail-players">${playersHtml}</div>
+        </div>`;
+      });
+    
+      const modalHtml = `
+        <div class="detail-modal-overlay" onclick="closeMatchDetail(event)">
+          <div class="detail-modal-content" onclick="event.stopPropagation()">
+            <div class="detail-modal-header">
+              <div>
+                <div class="detail-modal-title">🏟️ ${safeLocation}</div>
+                <div class="detail-modal-date">${dateStr} · ${totalParticipants}명 참가</div>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button class="detail-edit-btn" onclick="openEditAwardsModal(${idx})" title="기록 수정">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="detail-share-btn" onclick="openShareCardFromDetail(${idx})" title="결과 카드 공유">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                </button>
+                <button class="detail-modal-close" onclick="closeMatchDetail()">
+                  <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+            </div>
+            ${awardsHtml}
+            <div class="detail-teams">${teamsHtml}</div>
+          </div>
+        </div>
+      `;
+    
+      // 모달 주입
+      const container = document.createElement('div');
+      container.id = 'matchDetailModal';
+      container.innerHTML = modalHtml;
+      document.body.appendChild(container);
+      // 애니메이션
+      setTimeout(() => container.classList.add('show'), 10);
+    } catch (err) {
+      console.error('[MatchDetail] 상세 모달 렌더링 실패:', err);
+      showToast('매치 상세를 여는 중 오류가 발생했습니다.', 'error');
+    }
+  }
+  
+  function closeMatchDetail(evt) {
+    if (evt && evt.target.closest('.detail-modal-content')) return;
+    const modal = document.getElementById('matchDetailModal');
+    if (modal) {
+      modal.classList.remove('show');
+      setTimeout(() => modal.remove(), 250);
+    }
+  }
+  
+  /* ═══════════════════════ 📱 공유 카드 생성 ═══════════════════════ */
+  async function openShareCardFromDetail(idx) {
+    const match = currentHistoryData[idx] || globalHistoryData[idx];
+    if (!match) return;
+    
+    // MOM 사진 조회 (없으면 sublogo2.png)
+    let momPhotoUrl = './sublogo2.png';
+    if (match.momId && !match.momId.startsWith('GUEST')) {
+      try {
+        const doc = await db.collection("users").doc(match.momId).get();
+        if (doc.exists && doc.data().photoUrl) momPhotoUrl = doc.data().photoUrl;
+      } catch (e) { /* 폴백 유지 */ }
+    }
+    
+    const d = new Date(match.date);
+    const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    const safeLocation = escapeHtml(match.location || '상무풋살');
+    const safeWin = escapeHtml(match.winTeam || '');
+    const safeMom = escapeHtml(match.mom || '');
+    const safeSec = escapeHtml(match.second || '');
+    const safeThird = escapeHtml(match.third || '');
+    const totalP = match.totalParticipants || 0;
+    const totalT = (match.teams && match.teams.length) || 0;
+    
+    // 수상자 섹션
+    let podiumHtml = '';
+    if (match.mom) {
+      podiumHtml += `
+        <div style="display: flex; align-items: center; gap: 12px; background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.3); border-radius: 12px; padding: 10px; margin-top: 10px;">
+          <div style="width: 54px; height: 54px; border-radius: 50%; background: #051008; border: 2px solid #FFD700; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <img src="${escapeHtml(momPhotoUrl)}" crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='./sublogo2.png';">
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; margin-bottom: 2px; font-weight: 900;">🥇 MAN OF THE MATCH</div>
+            <div style="font-size: 17px; font-weight: 900; color: #fff;">${safeMom}</div>
+          </div>
+        </div>
+      `;
+    }
+    if (match.second || match.third) {
+      podiumHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">`;
+      podiumHtml += match.second ? `
+        <div style="background: rgba(192,192,192,0.08); border: 1px solid rgba(192,192,192,0.25); border-radius: 10px; padding: 8px 10px;">
+          <div style="font-size: 9px; color: #C0C0C0; letter-spacing: 1px; margin-bottom: 2px; font-weight: 900;">🥈 2ND</div>
+          <div style="font-size: 13px; font-weight: 900; color: #fff;">${safeSec}</div>
+        </div>` : `<div></div>`;
+      podiumHtml += match.third ? `
+        <div style="background: rgba(205,127,50,0.08); border: 1px solid rgba(205,127,50,0.25); border-radius: 10px; padding: 8px 10px;">
+          <div style="font-size: 9px; color: #CD7F32; letter-spacing: 1px; margin-bottom: 2px; font-weight: 900;">🥉 3RD</div>
+          <div style="font-size: 13px; font-weight: 900; color: #fff;">${safeThird}</div>
+        </div>` : `<div></div>`;
+      podiumHtml += `</div>`;
+    }
+    
+    const winHtml = match.winTeam ? `
+      <div style="background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3); border-radius: 12px; padding: 12px; margin-top: 14px; text-align: center;">
+        <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; margin-bottom: 4px; font-weight: 900;">🏆 CHAMPIONS</div>
+        <div style="font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 1px;">${safeWin}</div>
+      </div>` : '';
+    
+    const cardHtml = `
+      <div class="share-modal-overlay" onclick="closeShareModal(event)">
+        <div class="share-modal-content" onclick="event.stopPropagation()">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 15px; font-weight: 900; color: var(--green);">📱 결과 카드 공유</div>
+            <button onclick="closeShareModal()" style="background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px;">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          
+          <div style="display: flex; justify-content: center;">
+            <div id="shareCardCapture" style="width: 340px; background: linear-gradient(160deg, #0f1f15 0%, #051008 50%, #0a1a10 100%); border: 2px solid #00E676; border-radius: 18px; padding: 24px 20px; font-family: 'Noto Sans KR', 'Arial', sans-serif; box-sizing: border-box; color: #fff; position: relative; overflow: hidden;">
+              <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, #00E676, transparent);"></div>
+              
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <img src="./mainlogo.png" crossorigin="anonymous" alt="FCMON" style="height: 24px; width: auto; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                  <div style="display: none; align-items: center; gap: 6px;">
+                    <div style="width: 24px; height: 24px; background: #00E676; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; font-size: 13px;">⚽</div>
+                    <div style="font-weight: 900; font-size: 13px; letter-spacing: 2px; color: #00E676;">FCMON</div>
+                  </div>
+                </div>
+                <div style="font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 1px;">MATCH REPORT</div>
+              </div>
+              
+              <div style="text-align: center; padding: 10px 0 14px; border-bottom: 1px dashed rgba(255,255,255,0.15);">
+                <div style="font-size: 11px; color: rgba(255,255,255,0.55); margin-bottom: 2px;">🏟 ${safeLocation}</div>
+                <div style="font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #fff;">${dateStr}</div>
+              </div>
+              
+              ${winHtml}
+              ${podiumHtml}
+              
+              <div style="display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.15); font-size: 11px; color: rgba(255,255,255,0.5);">
+                <div>👥 ${totalP}명 참가</div>
+                <div style="width: 1px; height: 10px; background: rgba(255,255,255,0.2);"></div>
+                <div>⚽ ${totalT}개 팀</div>
+              </div>
+            </div>
+          </div>
+          
+          <button id="shareDownloadBtn" onclick="downloadShareCard('${dateStr.replace(/\./g, '-')}')" style="width: 100%; margin-top: 16px; padding: 12px; background: var(--green); color: #000; border: none; border-radius: 10px; font-weight: 900; font-size: 14px; cursor: pointer;">
+            📱 이미지 저장/공유
+          </button>
+        </div>
+      </div>
+    `;
+    
+    const container = document.createElement('div');
+    container.id = 'shareCardModal';
+    container.innerHTML = cardHtml;
+    document.body.appendChild(container);
+    setTimeout(() => container.classList.add('show'), 10);
+  }
+  
+  function closeShareModal(evt) {
+    if (evt && evt.target.closest('.share-modal-content')) return;
+    const modal = document.getElementById('shareCardModal');
+    if (modal) {
+      modal.classList.remove('show');
+      setTimeout(() => modal.remove(), 250);
+    }
+  }
+  
+  async function downloadShareCard(dateStr) {
+    const captureEl = document.getElementById('shareCardCapture');
+    if (!captureEl) { alert('카드를 찾을 수 없습니다'); return; }
+    if (typeof html2canvas === 'undefined') { alert('이미지 라이브러리 로드 중... 잠시 후 다시 시도해주세요'); return; }
+    
+    const btn = document.getElementById('shareDownloadBtn');
+    const originalText = btn.textContent;
+    btn.textContent = '이미지 생성 중...';
+    btn.disabled = true;
+    
+    try {
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch(e){}
+      }
+      const imgs = captureEl.querySelectorAll('img');
+      await Promise.all(Array.from(imgs).map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(r => { img.onload = r; img.onerror = r; setTimeout(r, 3000); });
+      }));
+      await new Promise(r => setTimeout(r, 150));
+      
+      const canvas = await html2canvas(captureEl, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: false
+      });
+      
+      canvas.toBlob(async (blob) => {
+        if (!blob) { alert('이미지 생성 실패'); btn.textContent = originalText; btn.disabled = false; return; }
+        
+        const fileName = `FCMON_${dateStr}.png`;
+        
+        try {
+          const file = new File([blob], fileName, { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'FCMON 매치 결과' });
+            btn.textContent = originalText;
+            btn.disabled = false;
+            return;
+          }
+        } catch (err) {
+          if (err.name === 'AbortError') { btn.textContent = originalText; btn.disabled = false; return; }
+        }
+        
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
+        btn.textContent = '✅ 저장됨';
+        setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500);
+      }, 'image/png');
+    } catch (err) {
+      console.error(err);
+      alert('이미지 생성 실패: ' + err.message);
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
+  }
+  
+  /* ═══════════════════════ 📊 월간 리포트 ═══════════════════════ */
+  
+  // 월 선택 드롭다운 초기화
+  function initMonthlyReport() {
+    const select = document.getElementById('reportMonthSelect');
+    if (!select || select.dataset.initialized === '1') return;
+    
+    // 과거 매치 기록에서 존재하는 월 추출
+    const months = new Set();
+    (globalHistoryData || []).forEach(m => {
+      if (!m.date) return;
+      const d = new Date(m.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      months.add(key);
+    });
+    
+    // 최신 월 순 정렬
+    const sorted = Array.from(months).sort().reverse();
+    
+    if (sorted.length === 0) {
+      document.getElementById('reportContainer').innerHTML = `
+        <div style="background: var(--bg3); border: 1px dashed var(--border); border-radius: 12px; padding: 32px 16px; text-align: center; color: var(--muted); font-size: 13px;">
+          아직 종료된 매치가 없습니다.<br>매치가 쌓이면 월간 리포트가 자동 생성됩니다.
+        </div>
+      `;
+      return;
+    }
+    
+    // 옵션 구성
+    select.innerHTML = '';
+    sorted.forEach(key => {
+      const [y, m] = key.split('-');
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = `${y}년 ${parseInt(m)}월`;
+      select.appendChild(option);
+    });
+    
+    select.dataset.initialized = '1';
+    
+    // 자동으로 최신월 선택
+    select.value = sorted[0];
+    renderMonthlyReport();
+  }
+  
+  // 월간 리포트 렌더
+  async function renderMonthlyReport() {
+    const select = document.getElementById('reportMonthSelect');
+    const monthKey = select.value;
+    if (!monthKey) return;
+    
+    const [year, month] = monthKey.split('-').map(Number);
+    
+    // 해당 월의 매치만 필터
+    const monthMatches = (globalHistoryData || []).filter(m => {
+      if (!m.date) return false;
+      const d = new Date(m.date);
+      return d.getFullYear() === year && (d.getMonth()+1) === month;
+    });
+    
+    if (monthMatches.length === 0) {
+      document.getElementById('reportContainer').innerHTML = `
+        <div style="background: var(--bg3); border: 1px dashed var(--border); border-radius: 12px; padding: 32px 16px; text-align: center; color: var(--muted); font-size: 13px;">
+          이 달에는 매치 기록이 없습니다.
+        </div>
+      `;
+      return;
+    }
+    
+    // ═══════ 집계 ═══════
+    
+    // 총 참가 인원 (누적, 중복 허용)
+    let totalPlayers = 0;
+    monthMatches.forEach(m => { totalPlayers += (m.totalParticipants || 0); });
+    
+    // MOM/2위/3위 횟수 집계 (이름 기준)
+    const momCount = {};
+    const secCount = {};
+    const thirdCount = {};
+    monthMatches.forEach(m => {
+      const momName = getHistoryAward(m, 'mom');
+      const secondName = getHistoryAward(m, 'second');
+      const thirdName = getHistoryAward(m, 'third');
+      if (momName) momCount[momName] = (momCount[momName] || 0) + 1;
+      if (secondName) secCount[secondName] = (secCount[secondName] || 0) + 1;
+      if (thirdName) thirdCount[thirdName] = (thirdCount[thirdName] || 0) + 1;
+    });
+    
+    // MVP: MOM 최다 수상자
+    const momEntries = Object.entries(momCount).sort((a, b) => b[1] - a[1]);
+    const mvpName = momEntries.length ? momEntries[0][0] : null;
+    const mvpCount = momEntries.length ? momEntries[0][1] : 0;
+    
+    // 개근상: 모든 매치 참석자 (teams 데이터 기반)
+    const attendCount = {};
+    const matchesWithTeams = monthMatches.filter(m => m.teams && Array.isArray(m.teams));
+    matchesWithTeams.forEach(m => {
+      (m.teams || []).forEach(t => {
+        (t.players || []).forEach(p => {
+          if (p.isGuest) return; // 용병 제외
+          attendCount[p.name] = (attendCount[p.name] || 0) + 1;
+        });
+      });
+    });
+    const fullAttendance = Object.entries(attendCount)
+      .filter(([_, cnt]) => cnt === matchesWithTeams.length && matchesWithTeams.length > 0)
+      .map(([name]) => name);
+    
+    // 시상 TOP 3 (MOM 기준)
+    const top3 = momEntries.slice(0, 3);
+    
+    // 신규 가입 선수 (users 컬렉션 조회)
+    let newMembers = [];
+    try {
+      const usersSnap = await db.collection("users").get();
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 1);
+      usersSnap.forEach(doc => {
+        const u = doc.data();
+        // createdAt이 있으면 사용, 없으면 매치 히스토리의 첫 등장으로 추정 어려우므로 생략
+        if (u.createdAt) {
+          let ts;
+          if (u.createdAt.toDate) ts = u.createdAt.toDate(); // Firestore Timestamp
+          else if (typeof u.createdAt === 'string') ts = new Date(u.createdAt);
+          else if (u.createdAt.seconds) ts = new Date(u.createdAt.seconds * 1000);
+          if (ts && ts >= startOfMonth && ts < endOfMonth) {
+            newMembers.push(u.name);
+          }
+        }
+      });
+    } catch (e) { console.warn('신규 가입 조회 실패:', e); }
+    
+    // MVP 사진 조회
+    let mvpPhotoUrl = './sublogo2.png';
+    if (mvpName) {
+      try {
+        const mvpSnap = await db.collection("users").where("name", "==", mvpName).limit(1).get();
+        if (!mvpSnap.empty) {
+          const mvpData = mvpSnap.docs[0].data();
+          if (mvpData.photoUrl) mvpPhotoUrl = mvpData.photoUrl;
+        }
+      } catch (e) { /* 폴백 유지 */ }
+    }
+    
+    // ═══════ HTML 렌더 ═══════
+    renderMonthlyReportCard({
+      year, month,
+      totalMatches: monthMatches.length,
+      totalPlayers,
+      mvpName, mvpCount, mvpPhotoUrl,
+      fullAttendance,
+      top3,
+      newMembers
+    });
+  }
+  
+  function renderMonthlyReportCard(data) {
+    const container = document.getElementById('reportContainer');
+    if (!container) return;
+    
+    const safeMvpName = escapeHtml(data.mvpName || '');
+    const safeMvpPhoto = escapeHtml(data.mvpPhotoUrl);
+    const monthEngNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const monthEng = monthEngNames[data.month - 1] || '';
+    
+    // MVP 섹션
+    let mvpHtml = '';
+    if (data.mvpName) {
+      mvpHtml = `
+        <div style="background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.35); border-radius: 12px; padding: 14px; margin-top: 12px;">
+          <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; font-weight: 900; margin-bottom: 8px; text-align: center;">👑 MVP OF THE MONTH</div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #051008; border: 2px solid #FFD700; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+              <img src="${safeMvpPhoto}" crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='./sublogo2.png';">
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 18px; font-weight: 900; color: #fff;">${safeMvpName}</div>
+              <div style="font-size: 11px; color: rgba(255,255,255,0.6);">MOM ${data.mvpCount}회 수상</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // TOP 3 섹션
+    let top3Html = '';
+    if (data.top3.length > 0) {
+      const medals = ['🥇','🥈','🥉'];
+      const colors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+      let rows = '';
+      data.top3.forEach(([name, cnt], i) => {
+        rows += `
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #fff; padding: 3px 0;">
+            <span><span style="color:${colors[i]};">${medals[i]}</span> ${escapeHtml(name)}</span>
+            <span style="color: rgba(255,255,255,0.7); font-weight: 700;">${cnt}회</span>
+          </div>
+        `;
+      });
+      top3Html = `
+        <div style="margin-top: 12px;">
+          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">🏅 시상 TOP 3 (MOM)</div>
+          <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px 12px;">${rows}</div>
+        </div>
+      `;
+    }
+    
+    // 개근상 섹션
+    let attendanceHtml = '';
+    if (data.fullAttendance.length > 0) {
+      const safeNames = data.fullAttendance.map(n => escapeHtml(n)).join(', ');
+      attendanceHtml = `
+        <div style="margin-top: 12px;">
+          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">⭐ 개근상 (전 경기 참석)</div>
+          <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #fff; line-height: 1.5;">${safeNames}</div>
+        </div>
+      `;
+    }
+    
+    // 신규 가입 섹션
+    let newMemberHtml = '';
+    if (data.newMembers.length > 0) {
+      const safeNames = data.newMembers.map(n => escapeHtml(n)).join(', ');
+      newMemberHtml = `
+        <div style="margin-top: 12px;">
+          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">🆕 신규 가입</div>
+          <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #fff;">${safeNames}</div>
+        </div>
+      `;
+    }
+    
+    const cardHtml = `
+      <div style="display: flex; justify-content: center;">
+        <div id="monthlyReportCapture" style="width: 340px; background: linear-gradient(160deg, #0f1f15 0%, #051008 50%, #0a1a10 100%); border: 2px solid #00E676; border-radius: 18px; padding: 28px 22px; font-family: 'Noto Sans KR', 'Arial', sans-serif; box-sizing: border-box; color: #fff; position: relative; overflow: hidden;">
+          <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, #00E676, transparent);"></div>
+          
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <img src="./mainlogo.png" crossorigin="anonymous" alt="FCMON" style="height: 24px; width: auto; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div style="display: none; align-items: center; gap: 6px;">
+                <div style="width: 24px; height: 24px; background: #00E676; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; font-size: 13px;">⚽</div>
+                <div style="font-weight: 900; font-size: 13px; letter-spacing: 2px; color: #00E676;">FCMON</div>
+              </div>
+            </div>
+            <div style="font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 1px;">MONTHLY REPORT</div>
+          </div>
+          
+          <div style="text-align: center; padding: 4px 0 16px; border-bottom: 1px dashed rgba(255,255,255,0.15);">
+            <div style="font-size: 34px; font-weight: 900; letter-spacing: 2px; color: #fff; line-height: 1;">${data.year} . ${String(data.month).padStart(2,'0')}</div>
+            <div style="font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 3px; margin-top: 6px;">${monthEng}</div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px;">
+            <div style="background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.2); border-radius: 10px; padding: 12px; text-align: center;">
+              <div style="font-size: 10px; color: #00E676; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px;">MATCHES</div>
+              <div style="font-size: 26px; font-weight: 900; color: #fff; line-height: 1;">${data.totalMatches}</div>
+            </div>
+            <div style="background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.2); border-radius: 10px; padding: 12px; text-align: center;">
+              <div style="font-size: 10px; color: #00E676; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px;">PLAYERS</div>
+              <div style="font-size: 26px; font-weight: 900; color: #fff; line-height: 1;">${data.totalPlayers}</div>
+            </div>
+          </div>
+          
+          ${mvpHtml}
+          ${top3Html}
+          ${attendanceHtml}
+          ${newMemberHtml}
+          
+          <div style="text-align: center; margin-top: 18px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.15); font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 1px;">
+            FCMON MONTHLY HIGHLIGHTS
+          </div>
+        </div>
+      </div>
+      
+      <button onclick="downloadMonthlyReport('${data.year}-${String(data.month).padStart(2,'0')}')" id="monthlyReportShareBtn" style="width: 100%; margin-top: 16px; padding: 12px; background: var(--green); color: #000; border: none; border-radius: 10px; font-weight: 900; font-size: 14px; cursor: pointer;">
+        📱 이미지 저장/공유
+      </button>
+    `;
+    container.innerHTML = cardHtml;
+  }
+  
+  async function downloadMonthlyReport(monthKey) {
+    const captureEl = document.getElementById('monthlyReportCapture');
+    if (!captureEl) { alert('리포트를 찾을 수 없습니다'); return; }
+    if (typeof html2canvas === 'undefined') { alert('이미지 라이브러리 로드 중... 잠시 후 다시 시도해주세요'); return; }
+    
+    const btn = document.getElementById('monthlyReportShareBtn');
+    const originalText = btn.textContent;
+    btn.textContent = '이미지 생성 중...';
+    btn.disabled = true;
+    
+    try {
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch(e){}
+      }
+      const imgs = captureEl.querySelectorAll('img');
+      await Promise.all(Array.from(imgs).map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(r => { img.onload = r; img.onerror = r; setTimeout(r, 3000); });
+      }));
+      await new Promise(r => setTimeout(r, 150));
+      
+      const canvas = await html2canvas(captureEl, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: false
+      });
+      
+      canvas.toBlob(async (blob) => {
+        if (!blob) { alert('이미지 생성 실패'); btn.textContent = originalText; btn.disabled = false; return; }
+        
+        const fileName = `FCMON_Monthly_${monthKey}.png`;
+        
+        try {
+          const file = new File([blob], fileName, { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'FCMON 월간 리포트' });
+            btn.textContent = originalText;
+            btn.disabled = false;
+            return;
+          }
+        } catch (err) {
+          if (err.name === 'AbortError') { btn.textContent = originalText; btn.disabled = false; return; }
+        }
+        
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
+        btn.textContent = '✅ 저장됨';
+        setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500);
+      }, 'image/png');
+    } catch (err) {
+      console.error(err);
+      alert('이미지 생성 실패: ' + err.message);
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
+  }
+
+  /* ═══════════════════════ ✏️ 매치 기록 수정 ═══════════════════════ */
+  
+  let _editingMatchIdx = null;
+  let _editingMatchData = null;
+  let _editingPlayerOptions = null; // { name: {userId, isGuest} } 매핑
+  
+  async function openEditAwardsModal(idx) {
+    const match = currentHistoryData[idx] || globalHistoryData[idx];
+    if (!match) return;
+    
+    // 1단계: 마스터 비번 인증
+    const pw = await showPrompt('마스터 비밀번호를 입력하세요', {
+      title: '🔒 매치 기록 수정',
+      type: 'password',
+      placeholder: '4자리 숫자',
+      maxlength: 4
+    });
+    if (!pw) return; // 취소
+    
+    const isValid = await verifyMasterPw(pw);
+    if (!isValid) {
+      showToast('❌ 비밀번호가 일치하지 않습니다', 'error');
+      return;
+    }
+    
+    // 상세 모달 닫기
+    closeMatchDetail();
+    
+    // 2단계: 수정 모달 오픈
+    _editingMatchIdx = idx;
+    _editingMatchData = match;
+    
+    // 참가자 옵션 준비 (teams 스냅샷 기반)
+    _editingPlayerOptions = {};
+    if (match.teams && Array.isArray(match.teams)) {
+      match.teams.forEach(team => {
+        (team.players || []).forEach(p => {
+          if (p.name) {
+            _editingPlayerOptions[p.name] = { userId: p.userId || '', isGuest: !!p.isGuest };
+          }
+        });
+      });
+    }
+    
+    renderEditModal(match);
+  }
+  
+  function renderEditModal(match) {
+    // 팀 옵션 (teams 스냅샷 기반)
+    let teamOptions = '<option value="">선택 없음 (무승부 등)</option>';
+    if (match.teams && Array.isArray(match.teams)) {
+      match.teams.forEach(t => {
+        const selected = t.name === match.winTeam ? ' selected' : '';
+        teamOptions += `<option value="${escapeHtml(t.name)}"${selected}>${escapeHtml(t.name)}</option>`;
+      });
+    }
+    
+    // 선수 옵션 (모든 참가자)
+    const playerNames = Object.keys(_editingPlayerOptions).sort();
+    function buildPlayerOptions(currentName) {
+      let html = '<option value="">선택 없음</option>';
+      playerNames.forEach(name => {
+        const selected = name === currentName ? ' selected' : '';
+        const guestTag = _editingPlayerOptions[name].isGuest ? ' [용병]' : '';
+        html += `<option value="${escapeHtml(name)}"${selected}>${escapeHtml(name)}${guestTag}</option>`;
+      });
+      return html;
+    }
+    
+    const d = new Date(match.date);
+    const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    
+    const modalHtml = `
+      <div class="edit-modal-content" onclick="event.stopPropagation()">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div style="font-size: 15px; font-weight: 900; color: #FFA502;">✏️ 매치 기록 수정</div>
+          <button onclick="closeEditAwardsModal()" style="background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">🏟 ${escapeHtml(match.location || '상무풋살')} · ${dateStr}</div>
+        
+        <div class="edit-field">
+          <div class="edit-field-label" style="color: #FFD700;">🏆 우승팀</div>
+          <select id="editWinTeam">${teamOptions}</select>
+        </div>
+        
+        <div class="edit-field">
+          <div class="edit-field-label" style="color: #FFD700;">🥇 MOM (+3점)</div>
+          <select id="editMom">${buildPlayerOptions(match.mom)}</select>
+        </div>
+        
+        <div class="edit-field">
+          <div class="edit-field-label" style="color: #C0C0C0;">🥈 2위 (+2점)</div>
+          <select id="editSecond">${buildPlayerOptions(match.second)}</select>
+        </div>
+        
+        <div class="edit-field">
+          <div class="edit-field-label" style="color: #CD7F32;">🥉 3위 (+1점)</div>
+          <select id="editThird">${buildPlayerOptions(match.third)}</select>
+        </div>
+        
+        <div class="edit-warning">
+          ⚠️ 저장 시 <b>랭킹 점수가 자동 재계산</b>됩니다.<br>
+          기존 수상자의 점수가 회수되고 새 수상자에게 부여됩니다.<br>
+          (용병은 점수 조정 대상에서 제외)
+        </div>
+        
+        <div class="edit-btn-row">
+          <button class="edit-btn-cancel" onclick="closeEditAwardsModal()">취소</button>
+          <button class="edit-btn-save" id="editSaveBtn" onclick="saveEditedAwards()">저장</button>
+        </div>
+      </div>
+    `;
+    
+    const container = document.createElement('div');
+    container.id = 'editAwardsModal';
+    container.innerHTML = modalHtml;
+    container.onclick = closeEditAwardsModal;
+    document.body.appendChild(container);
+    setTimeout(() => container.classList.add('show'), 10);
+  }
+  
+  function closeEditAwardsModal() {
+    const modal = document.getElementById('editAwardsModal');
+    if (modal) {
+      modal.classList.remove('show');
+      setTimeout(() => modal.remove(), 250);
+    }
+    _editingMatchIdx = null;
+    _editingMatchData = null;
+    _editingPlayerOptions = null;
+  }
+  
+  // 랭킹 재계산 + Firestore 저장
+  async function saveEditedAwards() {
+    if (_editingMatchIdx === null || !_editingMatchData) return;
+    
+    const newWinTeam = document.getElementById('editWinTeam').value;
+    const newMom = document.getElementById('editMom').value;
+    const newSecond = document.getElementById('editSecond').value;
+    const newThird = document.getElementById('editThird').value;
+    
+    // 동일 인물 중복 체크 (MOM=2위 금지)
+    const awardeeList = [newMom, newSecond, newThird].filter(n => n);
+    const uniqueSet = new Set(awardeeList);
+    if (awardeeList.length !== uniqueSet.size) {
+      showToast('⚠️ 같은 선수를 여러 위치에 수상할 수 없습니다', 'warning');
+      return;
+    }
+    
+    const oldMatch = _editingMatchData;
+    
+    // 변경 없으면 종료
+    if (oldMatch.mom === newMom && oldMatch.second === newSecond 
+        && oldMatch.third === newThird && oldMatch.winTeam === newWinTeam) {
+      closeEditAwardsModal();
+      showToast('변경 사항이 없습니다', 'info');
+      return;
+    }
+    
+    const confirmed = await showConfirm(
+      '매치 기록을 수정하고 랭킹을 재계산합니다.\n계속하시겠습니까?',
+      { title: '기록 수정 확인', confirmText: '저장' }
+    );
+    if (!confirmed) return;
+    
+    const btn = document.getElementById('editSaveBtn');
+    btn.textContent = '처리 중...';
+    btn.disabled = true;
+    
+    try {
+      // ═══════ 기존 우승팀 선수 ID 조회 ═══════
+      function getTeamMemberIds(teamName) {
+        if (!teamName || !oldMatch.teams) return [];
+        const team = oldMatch.teams.find(t => t.name === teamName);
+        if (!team) return [];
+        return (team.players || [])
+          .filter(p => !p.isGuest && p.userId && !p.userId.startsWith('GUEST'))
+          .map(p => p.userId);
+      }
+      
+      const oldWinIds = getTeamMemberIds(oldMatch.winTeam);
+      const newWinIds = getTeamMemberIds(newWinTeam);
+      
+      // ═══════ 선수 이름 → userId 조회 (수상자용) ═══════
+      async function getUserIdByName(name) {
+        if (!name) return null;
+        const opt = _editingPlayerOptions[name];
+        if (!opt) return null;
+        if (opt.isGuest) return null; // 용병은 점수 조정 안 함
+        
+        // teams 스냅샷에서 userId 확인
+        if (opt.userId && !opt.userId.startsWith('GUEST') && !opt.userId.startsWith('legacy_')) {
+          return opt.userId;
+        }
+        
+        // userId가 레거시거나 없으면 users 컬렉션에서 이름으로 조회
+        try {
+          const snap = await db.collection("users").where("name", "==", name).limit(1).get();
+          if (!snap.empty) return snap.docs[0].id;
+        } catch (e) { console.warn('userId 조회 실패:', e); }
+        return null;
+      }
+      
+      const oldMomId = await getUserIdByName(oldMatch.mom);
+      const newMomId = await getUserIdByName(newMom);
+      const oldSecId = await getUserIdByName(oldMatch.second);
+      const newSecId = await getUserIdByName(newSecond);
+      const oldThirdId = await getUserIdByName(oldMatch.third);
+      const newThirdId = await getUserIdByName(newThird);
+      
+      // ═══════ 점수/시상 delta 계산 (userId별 누적) ═══════
+      // delta 객체: { userId: { score: ±n, mom: ±n, sec: ±n, third: ±n } }
+      const delta = {};
+      function addDelta(userId, field, value) {
+        if (!userId) return;
+        if (!delta[userId]) delta[userId] = { score: 0, mom: 0, sec: 0, third: 0 };
+        delta[userId][field] += value;
+      }
+      
+      // MOM 변경: 기존 -3/-1mom, 신규 +3/+1mom
+      if (oldMatch.mom !== newMom) {
+        if (oldMomId) { addDelta(oldMomId, 'score', -3); addDelta(oldMomId, 'mom', -1); }
+        if (newMomId) { addDelta(newMomId, 'score', +3); addDelta(newMomId, 'mom', +1); }
+      }
+      // 2위 변경
+      if (oldMatch.second !== newSecond) {
+        if (oldSecId) { addDelta(oldSecId, 'score', -2); addDelta(oldSecId, 'sec', -1); }
+        if (newSecId) { addDelta(newSecId, 'score', +2); addDelta(newSecId, 'sec', +1); }
+      }
+      // 3위 변경
+      if (oldMatch.third !== newThird) {
+        if (oldThirdId) { addDelta(oldThirdId, 'score', -1); addDelta(oldThirdId, 'third', -1); }
+        if (newThirdId) { addDelta(newThirdId, 'score', +1); addDelta(newThirdId, 'third', +1); }
+      }
+      // 우승팀 변경: 기존 팀 전원 -1, 신규 팀 전원 +1
+      if (oldMatch.winTeam !== newWinTeam) {
+        oldWinIds.forEach(uid => addDelta(uid, 'score', -1));
+        newWinIds.forEach(uid => addDelta(uid, 'score', +1));
+      }
+      
+      // ═══════ Firestore 일괄 업데이트 ═══════
+      const batch = db.batch();
+      
+      // 1) matchHistory 문서 업데이트
+      const matchRef = db.collection("matchHistory").doc(oldMatch.gameId);
+      batch.update(matchRef, {
+        mom: newMom || '',
+        momId: newMomId || '',
+        second: newSecond || '',
+        secondId: newSecId || '',
+        third: newThird || '',
+        thirdId: newThirdId || '',
+        winTeam: newWinTeam || ''
+      });
+      
+      // 2) 각 유저 점수/시상 업데이트 (delta 기반 누적 반영)
+      // Firestore increment는 동시성 안전
+      for (const [uid, d] of Object.entries(delta)) {
+        if (!uid) continue;
+        const userRef = db.collection("users").doc(uid);
+        const updates = {};
+        if (d.score !== 0) updates.rankScore = firebase.firestore.FieldValue.increment(d.score);
+        if (d.mom !== 0) updates["awards.mom"] = firebase.firestore.FieldValue.increment(d.mom);
+        if (d.sec !== 0) updates["awards.sec"] = firebase.firestore.FieldValue.increment(d.sec);
+        if (d.third !== 0) updates["awards.third"] = firebase.firestore.FieldValue.increment(d.third);
+        if (Object.keys(updates).length > 0) {
+          batch.update(userRef, updates);
+        }
+      }
+      
+      await batch.commit();
+      
+      showToast('✅ 기록이 수정되고 랭킹이 재계산되었습니다', 'success');
+      closeEditAwardsModal();
+    } catch (err) {
+      console.error('[EditAwards] 저장 실패:', err);
+      showToast('❌ 저장 실패: ' + err.message, 'error');
+      btn.textContent = '저장';
+      btn.disabled = false;
+    }
+  }
+
+  function renderPaginationButtons(totalItems, currentPage) {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (totalPages <= 1) return '';
+    let html = '<div class="pagination">';
+    html += `<button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}><</button>`;
+    
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+      html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+    }
+    html += `<button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>></button>`;
+    html += '</div>';
+    return html;
+  }
+
+  function changePage(page) {
+    const totalPages = Math.ceil(currentHistoryData.length / itemsPerPage);
+    if (page < 1 || page > totalPages) return;
+    currentHistoryPage = page;
+    displayHistoryPage(currentHistoryPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function goBack() { window.location.href = 'index.html'; }
+</script>
+<!--
+════════════════════════════════════════════════════════════════════
+🎨 FCMON 공용 다이얼로그 라이브러리 v1.0
+각 페이지에 통째로 복사해서 넣으면 됩니다.
+════════════════════════════════════════════════════════════════════
+
+제공 API:
+  showToast(message, type)     - type: 'info' | 'success' | 'warning' | 'error'
+  await showConfirm(message, { title, confirmText, cancelText, danger })
+  await showPrompt(message, { title, type, placeholder, maxlength, defaultValue })
+
+사용 예:
+  showToast('저장되었습니다', 'success');
+  if (await showConfirm('삭제할까요?', { danger: true })) { ... }
+  const pw = await showPrompt('비밀번호:', { type: 'password', maxlength: 4 });
+-->
+
+<!-- ═══════════════════════ CSS ═══════════════════════ -->
+<style>
+  /* 토스트 시스템 - 화면 상단에 순차 표시 */
+  #fcm-toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+    width: 100%;
+    max-width: 400px;
+    padding: 0 16px;
+  }
+  .fcm-toast {
+    background: var(--bg2, #0f1510);
+    color: var(--text, #E8F5E9);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-left: 3px solid var(--green, #00E676);
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: fcm-toast-in 0.25s ease;
+    pointer-events: auto;
+    max-width: 100%;
+    word-break: keep-all;
+    line-height: 1.5;
+  }
+  .fcm-toast.is-leaving { animation: fcm-toast-out 0.2s ease forwards; }
+  .fcm-toast-success { border-left-color: var(--green, #00E676); }
+  .fcm-toast-warning { border-left-color: #FFCA28; }
+  .fcm-toast-error   { border-left-color: #FF4757; }
+  .fcm-toast-info    { border-left-color: #40C4FF; }
+  @keyframes fcm-toast-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fcm-toast-out {
+    to { opacity: 0; transform: translateY(-10px); }
+  }
+
+  /* 다이얼로그 (confirm/prompt 공용) - 화면 중앙 */
+  #fcm-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    backdrop-filter: blur(6px);
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #fcm-dialog-overlay.is-open { display: flex; }
+  .fcm-dialog-box {
+    background: var(--bg2, #0f1510);
+    width: 100%;
+    max-width: 360px;
+    border-radius: 22px;
+    padding: 26px 22px 22px;
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    animation: fcm-dialog-in 0.25s cubic-bezier(0.32, 1, 0.23, 1);
+  }
+  @keyframes fcm-dialog-in {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .fcm-dialog-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--green, #00E676);
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+  }
+  .fcm-dialog-title.is-danger { color: #FF4757; }
+  .fcm-dialog-message {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text, #E8F5E9);
+    white-space: pre-wrap;
+    word-break: keep-all;
+    margin-bottom: 18px;
+  }
+  .fcm-dialog-input {
+    width: 100%;
+    background: var(--bg3, #161d17);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-radius: 11px;
+    padding: 12px 15px;
+    color: var(--text, #E8F5E9);
+    font-family: inherit;
+    font-size: 16px;
+    outline: none;
+    -webkit-appearance: none;
+    margin-bottom: 18px;
+    transition: border-color 0.2s;
+  }
+  .fcm-dialog-input:focus { border-color: var(--green, #00E676); }
+  .fcm-dialog-input::placeholder { color: var(--muted, #5a6e5c); }
+  .fcm-dialog-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .fcm-dialog-btn {
+    flex: 1;
+    height: 46px;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    -webkit-appearance: none;
+    transition: 0.15s;
+  }
+  .fcm-dialog-btn:active { transform: scale(0.97); }
+  .fcm-dialog-btn-cancel {
+    background: transparent;
+    color: var(--muted2, #8a9e8c);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+  }
+  .fcm-dialog-btn-cancel:hover { background: var(--bg3, #161d17); }
+  .fcm-dialog-btn-confirm {
+    background: var(--green, #00E676);
+    color: #000;
+  }
+  .fcm-dialog-btn-confirm.is-danger {
+    background: #FF4757;
+    color: #fff;
+  }
+</style>
+
+<!-- ═══════════════════════ JS ═══════════════════════ -->
+<script>
+(function(){
+  /* 🔔 토스트 */
+  function ensureToastContainer() {
+    let c = document.getElementById('fcm-toast-container');
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'fcm-toast-container';
+      document.body.appendChild(c);
+    }
+    return c;
+  }
+  
+  window.showToast = function(message, type) {
+    const container = ensureToastContainer();
+    const el = document.createElement('div');
+    el.className = 'fcm-toast fcm-toast-' + (type || 'info');
+    el.textContent = message;
+    container.appendChild(el);
+    
+    // 자동 제거
+    const duration = (type === 'error' || type === 'warning') ? 3800 : 2800;
+    setTimeout(function(){
+      el.classList.add('is-leaving');
+      setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+    }, duration);
+  };
+  
+  /* 🔧 다이얼로그 공통 DOM 구성 */
+  function ensureDialogOverlay() {
+    let ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'fcm-dialog-overlay';
+      ov.innerHTML = '<div class="fcm-dialog-box">' +
+        '<div class="fcm-dialog-title" id="fcm-dialog-title"></div>' +
+        '<div class="fcm-dialog-message" id="fcm-dialog-message"></div>' +
+        '<input type="text" class="fcm-dialog-input" id="fcm-dialog-input" style="display:none;">' +
+        '<div class="fcm-dialog-actions">' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-cancel" id="fcm-dialog-cancel"></button>' +
+          '<button type="button" class="fcm-dialog-btn fcm-dialog-btn-confirm" id="fcm-dialog-confirm"></button>' +
+        '</div></div>';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+  
+  let dialogResolver = null;
+  
+  function closeDialog(result) {
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (ov) ov.classList.remove('is-open');
+    if (dialogResolver) {
+      const r = dialogResolver;
+      dialogResolver = null;
+      r(result);
+    }
+  }
+  
+  /* ✅ showConfirm - Promise<boolean> */
+  window.showConfirm = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '확인';
+    titleEl.classList.toggle('is-danger', !!opts.danger);
+    messageEl.textContent = message;
+    messageEl.style.display = '';
+    inputEl.style.display = 'none';
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.toggle('is-danger', !!opts.danger);
+    
+    cancelBtn.onclick = function(){ closeDialog(false); };
+    confirmBtn.onclick = function(){ closeDialog(true); };
+    
+    ov.classList.add('is-open');
+    confirmBtn.focus();
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* 📝 showPrompt - Promise<string|null> */
+  window.showPrompt = function(message, opts) {
+    opts = opts || {};
+    const ov = ensureDialogOverlay();
+    const titleEl = document.getElementById('fcm-dialog-title');
+    const messageEl = document.getElementById('fcm-dialog-message');
+    const inputEl = document.getElementById('fcm-dialog-input');
+    const cancelBtn = document.getElementById('fcm-dialog-cancel');
+    const confirmBtn = document.getElementById('fcm-dialog-confirm');
+    
+    titleEl.textContent = opts.title || '입력';
+    titleEl.classList.remove('is-danger');
+    messageEl.textContent = message;
+    messageEl.style.display = message ? '' : 'none';
+    
+    inputEl.style.display = '';
+    inputEl.type = opts.type || 'text';
+    inputEl.placeholder = opts.placeholder || '';
+    inputEl.value = opts.defaultValue || '';
+    if (opts.maxlength) inputEl.maxLength = opts.maxlength;
+    else inputEl.removeAttribute('maxlength');
+    if (opts.type === 'number' || (opts.maxlength === 4 && opts.type === 'password')) {
+      inputEl.inputMode = 'numeric';
+      inputEl.pattern = '[0-9]*';
+    } else {
+      inputEl.removeAttribute('inputmode');
+      inputEl.removeAttribute('pattern');
+    }
+    
+    cancelBtn.textContent = opts.cancelText || '취소';
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = opts.confirmText || '확인';
+    confirmBtn.classList.remove('is-danger');
+    
+    cancelBtn.onclick = function(){ closeDialog(null); };
+    confirmBtn.onclick = function(){ closeDialog(inputEl.value); };
+    inputEl.onkeydown = function(e){ 
+      if (e.key === 'Enter') { e.preventDefault(); closeDialog(inputEl.value); }
+    };
+    
+    ov.classList.add('is-open');
+    setTimeout(function(){ inputEl.focus(); }, 50);
+    
+    return new Promise(function(resolve){ dialogResolver = resolve; });
+  };
+  
+  /* ⌨️ 전역 키보드 - ESC로 다이얼로그 취소, 배경 클릭으로 취소 */
+  document.addEventListener('keydown', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.key === 'Escape') { closeDialog(null); }
+  });
+  
+  document.addEventListener('click', function(e){
+    const ov = document.getElementById('fcm-dialog-overlay');
+    if (!ov || !ov.classList.contains('is-open')) return;
+    if (e.target === ov) { closeDialog(null); }
+  }, true);
+})();
+</script>
+
+<!--
+════════════════════════════════════════════════════════════════════
+🔄 FCMON Undo 토스트 확장 v1.0
+_dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
+
+사용 예:
+  showUndoToast('매치가 삭제되었습니다', () => {
+    // 되돌리기 콜백 - 여기서 복원 로직 실행
+    restoreMatch(savedData);
+  }, {
+    duration: 5000,        // 표시 시간 (ms)
+    label: '되돌리기'      // 버튼 텍스트
+  });
+════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* Undo 토스트 전용 스타일 */
+  .fcm-undo-toast {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 14px 14px 18px !important;
+    min-width: 280px;
+    max-width: 360px;
+  }
+  .fcm-undo-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text, #E8F5E9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fcm-undo-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--green, #00E676);
+    color: var(--green, #00E676);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.15s;
+    letter-spacing: -0.3px;
+  }
+  .fcm-undo-btn:hover, .fcm-undo-btn:active { 
+    background: var(--green, #00E676); 
+    color: #000;
+  }
+  /* 진행 상태 바 - 남은 시간 시각화 */
+  .fcm-undo-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--green, #00E676);
+    width: 100%;
+    transform-origin: left center;
+    animation: fcm-undo-countdown linear forwards;
+  }
+  @keyframes fcm-undo-countdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+  }
+  .fcm-undo-toast { position: relative; overflow: hidden; }
+
+    /* ─── FAB 좌측 하단 고정 + 세로 메뉴 ─── */
+    .fab-wrapper {
+      position: fixed; 
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      left: 16px;
+      z-index: 100;
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      pointer-events: none;
+    }
+    @media (min-width: 512px) {
+      .fab-wrapper {
+        left: 50%;
+        margin-left: calc(-240px + 16px);
+      }
+    }
+    .fab-toggle-btn {
+      pointer-events: auto; 
+      width: 56px; height: 56px; 
+      border-radius: 50%; 
+      background: linear-gradient(135deg, #00E676, #00C853);
+      color: #000; border: none; cursor: pointer; 
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,230,118,0.4); 
+      transition: all 0.3s cubic-bezier(0.32, 1, 0.23, 1); 
+      outline: none;
+      order: 2;
+    }
+    .fab-wrapper.open .fab-toggle-btn { 
+      transform: rotate(135deg); 
+      background: #333; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+      color: #fff; 
+    }
+    .fab-expand-menu {
+      pointer-events: none; 
+      display: flex; 
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      opacity: 0; 
+      transform: translateY(12px) scale(0.95); 
+      transition: all 0.28s cubic-bezier(0.32, 1, 0.23, 1);
+      order: 1;
+    }
+    .fab-wrapper.open .fab-expand-menu { 
+      opacity: 1; 
+      transform: translateY(0) scale(1); 
+      pointer-events: auto;
+    }
+    .fab-btn-primary, 
+    .fab-btn-secondary { 
+      min-width: 160px;
+      height: 46px;
+      padding: 0 22px;
+      border-radius: 23px;
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap; 
+      letter-spacing: -0.3px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      -webkit-appearance: none;
+      transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+      font-family: inherit;
+    }
+    .fab-btn-primary { 
+      background: linear-gradient(135deg, #00E676, #00C853); 
+      color: #000; 
+      font-size: 14px; 
+      font-weight: 900;
+      box-shadow: 0 4px 14px rgba(0,230,118,0.35); 
+    }
+    .fab-btn-primary:active { transform: scale(0.96); }
+    .fab-btn-secondary { 
+      background: rgba(30, 35, 32, 0.85);
+      color: #E8F5E9; 
+      border: 1px solid rgba(255,255,255,0.1); 
+      backdrop-filter: blur(12px); 
+      -webkit-backdrop-filter: blur(12px); 
+      font-size: 13px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .fab-btn-secondary:active { 
+      transform: scale(0.96); 
+      background: rgba(45, 50, 47, 0.95); 
+    }
+
+  </style>
+
+<script>
+(function(){
+  /* 🔄 showUndoToast - 실행 취소 가능한 토스트 */
+  /* 반환값: { commit: () => void, cancel: () => void } */
+  /*   commit(): 즉시 완료(토스트 닫고 완료 콜백 실행 안 함) */
+  /*   cancel(): 되돌리기 동작 (토스트 닫고 onUndo 콜백 실행) */
+  
+  window.showUndoToast = function(message, onUndo, opts) {
+    opts = opts || {};
+    const duration = opts.duration || 5000;
+    const label = opts.label || '되돌리기';
+    
+    // 컨테이너 확보 (showToast와 공유)
+    let container = document.getElementById('fcm-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'fcm-toast-container';
+      document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'fcm-toast fcm-toast-success fcm-undo-toast';
+    
+    const msgEl = document.createElement('div');
+    msgEl.className = 'fcm-undo-message';
+    msgEl.textContent = message;
+    
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fcm-undo-btn';
+    btn.textContent = label;
+    
+    const progress = document.createElement('div');
+    progress.className = 'fcm-undo-progress';
+    progress.style.animationDuration = duration + 'ms';
+    
+    toast.appendChild(msgEl);
+    toast.appendChild(btn);
+    toast.appendChild(progress);
+    container.appendChild(toast);
+    
+    let settled = false;
+    let timeoutId = null;
+    
+    function dismiss() {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+      toast.classList.add('is-leaving');
+      setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
+    }
+    
+    btn.onclick = function() {
+      if (settled) return;
+      try { if (onUndo) onUndo(); } 
+      catch(e) { console.error('[Undo] 되돌리기 오류:', e); }
+      dismiss();
+    };
+    
+    timeoutId = setTimeout(function() {
+      // 자동 소멸 - 되돌리기 호출 없이 그냥 토스트 닫힘
+      dismiss();
+    }, duration);
+    
+    return {
+      commit: function() { dismiss(); },
+      cancel: function() { btn.click(); }
+    };
+  };
+})();
+</script>
+
+<!-- ─── FAB 플로팅 메뉴 ─── -->
+<div class="fab-wrapper" id="fabWrapper">
+  <button class="fab-toggle-btn" onclick="toggleFab(event)" aria-label="메뉴">
+    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+  <div class="fab-expand-menu">
+    <button class="fab-btn-primary" onclick="location.href='index.html'">홈으로</button>
+    <button class="fab-btn-secondary" onclick="location.href='profile.html'">프로필</button>
+    <button class="fab-btn-secondary" onclick="location.href='members.html'">회원 명부</button>
+    <button class="fab-btn-secondary" onclick="location.href='attendance.html'">출석률</button>
+  </div>
+</div>
+
+
+<script>
+  // FAB 토글 (공통)
+  function toggleFab(e) { 
+    if(e) e.stopPropagation(); 
+    document.getElementById('fabWrapper').classList.toggle('open'); 
+  }
+  document.addEventListener('click', function(event) {
+    const fab = document.getElementById('fabWrapper');
+    if (fab && fab.classList.contains('open') && !fab.contains(event.target)) {
+      fab.classList.remove('open');
+    }
+  });
+</script>
+
+</body>
+</html>
