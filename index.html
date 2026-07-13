@@ -42,9 +42,10 @@
     .btn-install-icon { background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; outline: none; -webkit-appearance: none; transition: 0.2s; }
     .btn-install-icon:active { color: var(--green); transform: scale(0.9); }
     
-    .notice-container{width:100%;background:rgba(255,71,87,0.05);border-top:1px solid rgba(255,71,87,0.2);border-bottom:1px solid rgba(255,71,87,0.2);overflow:hidden;white-space:nowrap;padding:9px 0;margin-bottom:22px;position:relative;cursor:pointer;}
+    /* v2: 공지는 조용한 배너 톤으로 (긴급 정보가 아니므로 빨강 제거) */
+    .notice-container{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;white-space:nowrap;padding:10px 0;margin-bottom:22px;position:relative;}
     .notice-track{display:inline-flex;animation:marqueeScroll linear infinite}
-    .notice-text{color:var(--red);font-weight:700;font-size:13px;padding-right:80px;flex-shrink:0;}
+    .notice-text{color:var(--muted2);font-weight:600;font-size:12.5px;padding-right:80px;flex-shrink:0;}
     @keyframes marqueeScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
     
     .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -52,17 +53,25 @@
     .section-badge{font-size:11px;color:var(--muted2)}
     
     .match-list{display:flex;flex-direction:column;gap:10px}
-    .match-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;overflow:hidden}
+    .match-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;overflow:hidden}
     .match-card:active{transform:scale(0.985);border-color:var(--border-hover)}
-    .match-card::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--green);transition:background .3s}
-    .match-card.status-soon::before{background:var(--amber)}
-    .match-card.status-live::before{background:var(--blue)}
-    .match-card.status-done::before{background:var(--muted)}
     .match-card::after { content:''; position:absolute; top:-20px; right:-20px; width:130px; height:130px; background-image:url('./sublogo2.png'); background-size:contain; background-repeat:no-repeat; background-position:center; opacity:0.08; pointer-events:none; z-index:0; }
-    
-    .card-top, .match-date, .card-bottom{position:relative; z-index:1;}
-    .card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
-    .match-loc{font-size:17px;font-weight:900;color:var(--text);line-height:1.2;padding-right:8px}
+    .match-card.status-done{opacity:.72;}
+
+    /* v2: 날짜 블록형 카드 레이아웃 */
+    .mc-main, .card-bottom{position:relative; z-index:1;}
+    .mc-main{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+    .mc-date{width:56px;flex-shrink:0;text-align:center;border-right:1px solid var(--border);padding-right:14px;display:flex;flex-direction:column;gap:1px;}
+    .mc-date .mc-m{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--green);}
+    .mc-date .mc-d{font-size:24px;font-weight:900;line-height:1.1;color:var(--text);font-variant-numeric:tabular-nums;}
+    .mc-date .mc-w{font-size:10.5px;color:var(--muted);}
+    .match-card.status-done .mc-date .mc-m{color:var(--muted);}
+    .mc-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+    .match-loc{font-size:16px;font-weight:800;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .mc-time{font-size:12px;color:var(--muted2);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .mc-main .status-badge{align-self:flex-start;}
+    .mc-right{display:flex;align-items:center;gap:6px;}
+    .mc-eta{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
     
     /* ★ 통합된 일체형 배지 및 오버플로 해결 디자인 */
     .status-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:900;flex-shrink:0; white-space: normal; /* 모달 밖으로 삐져나가는 버그 해결: 줄바꿈 허용 */}
@@ -73,7 +82,7 @@
     .badge-open .dot{background:var(--status-open-color)}
     .badge-soon{background:var(--status-soon-bg);color:var(--status-soon-color);border:1px solid rgba(255,202,40,0.2)}
     .badge-soon .dot{background:var(--status-soon-color)}
-    .badge-live{background:var(--status-live-bg);color:var(--status-live-color);border:1px solid rgba(64,196,255,0.25)}
+    .badge-live{background:var(--status-live-bg);color:var(--status-live-color);border:1px solid rgba(255,90,102,0.25)}
     .badge-live .dot{background:var(--status-live-color)}
     .badge-done{background:var(--status-done-bg);color:var(--status-done-color);border:1px solid rgba(255,255,255,0.06)}
     .badge-done .dot{background:var(--status-done-color);animation:none}
@@ -284,6 +293,8 @@
       background: rgba(45, 50, 47, 0.95); 
     }
   </style>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#0E1210">
 </head>
 <body class="has-tabbar">
 <div class="container">
@@ -618,7 +629,7 @@
       if (doc.exists) {
         const data = doc.data();
         if (data.notice) {
-          const txt = '📢 ' + data.notice.text;
+          const txt = data.notice.text;
           document.getElementById('displayNotice').innerText = txt; document.getElementById('displayNotice2').innerText = txt;
           document.getElementById('noticeTrack').style.animationDuration = (data.notice.speed || 24) + 's';
           document.getElementById('n_text').value = data.notice.text || ''; document.getElementById('n_speed').value = data.notice.speed || 24;
@@ -741,19 +752,28 @@
       var capacity = m.perTeam * m.totalTeams; var currentPlayers = m.currentCount || 0; 
       var status = getMatchStatus(m.dateTime, currentPlayers, capacity, m.status === '매치종료');
       var chip = getTimeChip(m.dateTime, status);
-      var badgeHtml = getStatusBadge(status, chip.text); // 통합된 배지
-      
-      var dateStr = new Date(m.dateTime).toLocaleString('ko-KR', { month:'short', day:'numeric', weekday:'short', hour:'2-digit', minute:'2-digit' });
+      var badgeHtml = getStatusBadge(status, ''); // 배지는 상태만, 시간은 하단 행에 표시
+
+      var dObj = new Date(m.dateTime);
+      var mcMonth = (dObj.getMonth() + 1) + '월';
+      var mcDay = dObj.getDate();
+      var mcWeek = ['일','월','화','수','목','금','토'][dObj.getDay()] + '요일';
+      var mcTime = dObj.toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      var mcMeta = mcTime + ' · ' + m.perTeam + '명 × ' + m.totalTeams + '팀';
       var fillPct = capacity > 0 ? Math.min(100, Math.round(currentPlayers / capacity * 100)) : 0;
       var fillCls = fillPct >= 100 ? 'full' : fillPct >= 75 ? 'soon' : '';
 
       html += '<div class="match-card status-' + status + '" onclick="goToMatch(\'' + escapeHtml(m.gameId) + '\')">' +
-          '<div class="card-top"><div class="match-loc">' + escapeHtml(m.location) + '</div>' + badgeHtml + '</div>' +
-          '<div class="match-date">' + dateStr + '</div>' +
+          '<div class="mc-main">' +
+            '<div class="mc-date"><span class="mc-m">' + mcMonth + '</span><span class="mc-d">' + mcDay + '</span><span class="mc-w">' + mcWeek + '</span></div>' +
+            '<div class="mc-info"><div class="match-loc">' + escapeHtml(m.location) + '</div><div class="mc-time">' + mcMeta + '</div></div>' +
+            badgeHtml +
+          '</div>' +
           '<div class="card-bottom">' +
             '<div class="capacity-wrap"><div class="capacity-bar-track"><div class="capacity-bar-fill ' + fillCls + '" style="width:' + fillPct + '%"></div></div><span class="capacity-count">' + currentPlayers + '<span class="capacity-text">/' + capacity + '명</span></span></div>' +
+            '<div class="mc-right"><span class="mc-eta">' + chip.text + '</span>' +
             '<div class="btn-delete-match" onclick="promptDeleteMatch(event,\'' + escapeHtml(m.gameId) + '\')"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg></div>' +
-          '</div></div>';
+          '</div></div></div>';
     });
     document.getElementById('matchList').innerHTML = html;
   }

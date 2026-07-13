@@ -1,0 +1,25 @@
+{
+  "name": "FCMON",
+  "short_name": "FCMON",
+  "description": "MONDAY FUTSAL CLUB 매치 관리",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E1210",
+  "theme_color": "#0E1210",
+  "icons": [
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
