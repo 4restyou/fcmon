@@ -20,6 +20,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+  <script src="./app-core.js"></script>
 
   <style>
     /* 페이지 전용 스타일만 남김 (공통 토큰/리셋/폰트/접근성/스피너는 common.css에서 로드) */
@@ -481,11 +482,7 @@
 </div>
 
 <script>
-  const firebaseConfig = { apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU", authDomain: "fcmon-96ec1.firebaseapp.com", projectId: "fcmon-96ec1", storageBucket: "fcmon-96ec1.firebasestorage.app", messagingSenderId: "912620232254", appId: "1:912620232254:web:b86a27fa9f733f2c137b6f" };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const AUTH_FUNCTIONS_BASE_URL = "https://us-central1-fcmon-96ec1.cloudfunctions.net";
-
+        
   /* ═══════════════════════ 🔐 마스터 비밀번호 인증 시스템 ═══════════════════════ */
   /* Firestore의 settings/system 문서에 저장된 masterPwHash(SHA-256)와 비교      */
   /* 평문 마스터 비번이 HTML 소스에 노출되지 않도록 함                             */
@@ -563,25 +560,11 @@
 
   /* ═══════════════════════ 🛡 XSS 방어 헬퍼 ═══════════════════════════════════ */
   /* innerHTML에 사용자 입력을 넣기 전 HTML 특수문자를 이스케이프 */
-  function escapeHtml(str) {
-    if (str == null) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
+  
 
   /* photoUrl의 안전 검증: data:image/ 또는 http(s):// 만 허용 */
   /* javascript: 같은 위험한 프로토콜 차단 */
-  function safePhotoUrl(url) {
-    if (!url) return '';
-    const s = String(url).trim();
-    if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(s)) return s;
-    if (/^https?:\/\//i.test(s)) return s;
-    return ''; // 안전하지 않은 URL은 빈 문자열로
-  }
+  
   /* ═════════════════════════════════════════════════════════════════════════════ */
 
   /* ═══════════════════════ 🌀 로딩 상태 유틸 ═══════════════════════════════════ */

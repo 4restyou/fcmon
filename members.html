@@ -18,6 +18,7 @@
   
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="./app-core.js"></script>
 
   <style>
     .container { max-width: 480px; margin: 0 auto; padding: 0 16px 100px; }
@@ -332,33 +333,10 @@
 
 <script>
   // ★ Firebase 초기화
-  const firebaseConfig = {
-    apiKey: "AIzaSyB23qdSj0wknPB-WfNdoSvhdYRcQkrSYyU",
-    authDomain: "fcmon-96ec1.firebaseapp.com",
-    projectId: "fcmon-96ec1",
-    storageBucket: "fcmon-96ec1.firebasestorage.app",
-    messagingSenderId: "912620232254",
-    appId: "1:912620232254:web:b86a27fa9f733f2c137b6f"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  
+        
   /* ═══════════════════════ XSS 방어 ═══════════════════════ */
-  function escapeHtml(str) {
-    if (str === null || str === undefined) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-  function safePhotoUrl(url) {
-    if (!url || typeof url !== 'string') return '';
-    const trimmed = url.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:image/')) return trimmed;
-    return '';
-  }
+  
+  
   
   /* ═══════════════════════ 토스트 ═══════════════════════ */
   function showToast(message, type) {
