@@ -64,6 +64,7 @@
     .member-name { font-size: 14px; font-weight: 900; color: var(--text); }
     .member-badge { font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 6px; letter-spacing: 0.3px; }
     .member-badge.b-inactive { background: rgba(255,202,40,0.15); color: var(--amber); border: 1px solid rgba(255,202,40,0.3); }
+    .member-badge.b-guest { background: rgba(64,150,255,0.15); color: #5FB8FF; border: 1px solid rgba(64,150,255,0.35); }
     .member-badge.b-retired { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
     .member-meta { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .member-meta .dot-sep { opacity: 0.3; }
@@ -258,6 +259,7 @@
     <button class="tab-btn active" data-tab="active" onclick="switchTab('active')">활성 <span class="tab-count" id="tabCountActive">(0)</span></button>
     <button class="tab-btn" data-tab="inactive" onclick="switchTab('inactive')">휴면 <span class="tab-count" id="tabCountInactive">(0)</span></button>
     <button class="tab-btn" data-tab="retired" onclick="switchTab('retired')">탈퇴 <span class="tab-count" id="tabCountRetired">(0)</span></button>
+    <button class="tab-btn" data-tab="guest" onclick="switchTab('guest')">용병 <span class="tab-count" id="tabCountGuest">(0)</span></button>
   </div>
   
   <!-- 검색 & 정렬 -->
@@ -463,14 +465,19 @@
       });
       
       // 카운트 업데이트
-      const counts = { active: 0, inactive: 0, retired: 0 };
-      allMembers.forEach(m => { counts[m.status] = (counts[m.status] || 0) + 1; });
+      const counts = { active: 0, inactive: 0, retired: 0, guest: 0 };
+      allMembers.forEach(m => {
+        // 용병(memberType:'guest')은 회원 상태 집계와 분리한다
+        if (m.memberType === 'guest') { if (m.status !== 'retired') counts.guest++; return; }
+        counts[m.status] = (counts[m.status] || 0) + 1;
+      });
       document.getElementById('countActive').textContent = counts.active;
       document.getElementById('countInactive').textContent = counts.inactive;
       document.getElementById('countRetired').textContent = counts.retired;
       document.getElementById('tabCountActive').textContent = '(' + counts.active + ')';
       document.getElementById('tabCountInactive').textContent = '(' + counts.inactive + ')';
       document.getElementById('tabCountRetired').textContent = '(' + counts.retired + ')';
+      document.getElementById('tabCountGuest').textContent = '(' + counts.guest + ')';
       
       filterMembers();
     } catch (err) {
@@ -488,7 +495,9 @@
     const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
     const sortBy = document.getElementById('sortSelect').value;
     
-    let filtered = allMembers.filter(m => m.status === currentTab);
+    let filtered = (currentTab === 'guest')
+      ? allMembers.filter(m => m.memberType === 'guest' && m.status !== 'retired')
+      : allMembers.filter(m => m.memberType !== 'guest' && m.status === currentTab);
     if (q) filtered = filtered.filter(m => (m.name || '').toLowerCase().includes(q));
     
     // 정렬
@@ -525,7 +534,8 @@
       const statusClass = m.status === 'inactive' ? 'is-inactive' : (m.status === 'retired' ? 'is-retired' : '');
       
       let badge = '';
-      if (m.status === 'inactive') badge = '<span class="member-badge b-inactive">휴면</span>';
+      if (m.memberType === 'guest') badge = '<span class="member-badge b-guest">용병</span>';
+      else if (m.status === 'inactive') badge = '<span class="member-badge b-inactive">휴면</span>';
       else if (m.status === 'retired') badge = '<span class="member-badge b-retired">탈퇴</span>';
       
       html += `
@@ -577,7 +587,18 @@
     
     // 액션 버튼 구성
     let actionButtons = '';
-    if (m.status === 'active') {
+    if (m.memberType === 'guest') {
+      // 용병 전용: 정회원 전환 / 명단에서 삭제
+      actionButtons = `
+        <div class="action-buttons">
+          <button class="btn-action btn-active" onclick="promoteGuestToMember()">⬆️ 정회원 전환</button>
+          <button class="btn-action btn-retire" onclick="changeStatus('retired')">🗑 용병 삭제</button>
+        </div>
+        <div class="action-buttons cols-1" style="margin-top:8px;">
+          <button class="btn-action btn-edit" onclick="openEditModal()">📝 정보 수정</button>
+        </div>
+      `;
+    } else if (m.status === 'active') {
       actionButtons = `
         <div class="action-buttons">
           <button class="btn-action btn-inactive" onclick="changeStatus('inactive')">😴 휴면 전환</button>
@@ -668,6 +689,39 @@
   }
   
   /* ═══════════════════════ 상태 변경 ═══════════════════════ */
+  /* 용병 → 정회원 전환: memberType만 'member'로 바꾼다.
+     (규칙 케이스4 허용 범위 — name/pos/ovr/stats/rankScore/awards 불변) */
+  async function promoteGuestToMember() {
+    if (!_currentMemberId) return;
+    const m = allMembers.find(x => x.id === _currentMemberId);
+    if (!m) return;
+
+    const authed = await ensureMasterAuth();
+    if (!authed) return;
+
+    const ok = await showConfirm(
+      `${m.name}님을 정회원으로 전환합니다.\n\n` +
+      '전환 후에는 랭킹·출석률 집계에 포함되고,\n정회원 신청 탭으로 참가하게 됩니다.\n\n계속하시겠습니까?',
+      { title: '정회원 전환', confirmText: '전환' }
+    );
+    if (!ok) return;
+
+    try {
+      await db.collection("users").doc(_currentMemberId).update({
+        memberType: 'member',
+        status: 'active',
+        contact: m.contact || '',
+        instagram: m.instagram || '',
+        memo: m.memo || ''
+      });
+      showToast(m.name + '님이 정회원으로 전환되었습니다.', 'success');
+      closeDetailModal();
+      loadMembers();
+    } catch (err) {
+      showToast('전환 실패: ' + err.message, 'error');
+    }
+  }
+
   async function changeStatus(newStatus) {
     if (!_currentMemberId) return;
     const m = allMembers.find(x => x.id === _currentMemberId);

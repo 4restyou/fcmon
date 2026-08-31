@@ -494,6 +494,7 @@
           const data = doc.data();
           // 탈퇴 회원 제외
           if (data.status === 'retired') return;
+          if (data.memberType === 'guest') return; // 용병은 회원 랭킹에서 제외
           const user = { id: doc.id, ...data };
           globalRankedPlayers.push(user);
           if (user.name) globalUsersByName[user.name] = user;

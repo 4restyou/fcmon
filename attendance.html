@@ -194,6 +194,7 @@
             let u = uDoc.data();
             // 탈퇴 회원 제외
             if (u.status === 'retired') return;
+            if (u.memberType === 'guest') return; // 용병은 회원 출석률에서 제외
             u.id = uDoc.id;
             u.attCount = attMap[u.id] || 0;
             // 총 경기 수가 0이 아닐 때만 비율 계산

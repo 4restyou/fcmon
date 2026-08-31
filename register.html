@@ -93,6 +93,7 @@
     
     .card-avatar { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border); margin: 0 auto 6px; overflow: hidden; background: var(--bg); display:flex; align-items:center; justify-content:center; font-size:20px; position: relative; z-index: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
     .card-name { font-size: 12px; font-weight: 900; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.5px; }
+    .card-guest-tag { display:inline-block; margin-left:4px; font-size:9px; font-weight:800; color:#5FB8FF; background:rgba(64,150,255,0.15); border:1px solid rgba(64,150,255,0.3); border-radius:5px; padding:1px 4px; vertical-align:middle; }
     .card-note-dot { position:absolute; top:6px; left:6px; width:22px; height:22px; background:var(--green); color:#000; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; box-shadow:0 2px 6px rgba(0,230,118,0.4); z-index:3; animation:notePulse 2.4s ease-in-out infinite; }
     @keyframes notePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
     .player-card-mine { border-color: rgba(0,230,118,0.6) !important; box-shadow: 0 0 0 2px rgba(0,230,118,0.15), 0 4px 12px rgba(0,230,118,0.1); }
@@ -293,7 +294,7 @@
     
     <div class="form-tabs">
       <div class="form-tab-btn active" id="tabBtnMember" onclick="switchTab('member')">정회원 신청</div>
-      <div class="form-tab-btn" id="tabBtnGuest" onclick="switchTab('guest')">게스트 신청</div>
+      <div class="form-tab-btn" id="tabBtnGuest" onclick="switchTab('guest')">용병 신청</div>
     </div>
 
     <div id="memberForm">
@@ -323,17 +324,25 @@
     </div>
 
     <div id="guestForm" style="display:none;">
-      <div class="form-group"><input type="text" id="g_name" class="form-input" placeholder="게스트 이름 (실명 또는 닉네임)"></div>
-      <div class="form-group">
-        <select id="g_pos" class="form-input" style="color:var(--text)">
-          <option value="FW">주 포지션: FW (공격수)</option>
-          <option value="MF" selected>주 포지션: MF (미드필더)</option>
-          <option value="DF">주 포지션: DF (수비수)</option>
-          <option value="GK">주 포지션: GK (골키퍼)</option>
-        </select>
+      <div style="font-size:11.5px; color:var(--muted); line-height:1.6; margin-bottom:12px;">
+        용병으로 한 번 등록하면 다음부터는 <b style="color:var(--muted2);">이름과 비밀번호만</b>으로 바로 신청됩니다.
       </div>
-      <div class="form-group"><input type="number" id="g_ovr" class="form-input" placeholder="본인의 예상 OVR (1~100 사이, 미입력시 50)"></div>
-      <div class="form-group"><input type="password" id="g_pw" class="form-input" placeholder="참가 취소용 비밀번호 (아무 숫자 4자리)" onkeypress="if(event.key==='Enter') { handleApplication(); }"></div>
+      <div class="form-group"><input type="text" id="g_name" class="form-input" placeholder="이름 (실명 또는 닉네임)"></div>
+      <div class="form-group"><input type="password" id="g_pw" class="form-input" placeholder="비밀번호 숫자 4자리" inputmode="numeric" maxlength="4" onkeypress="if(event.key==='Enter') { handleApplication(); }"></div>
+
+      <!-- 처음 등록할 때만 사용하는 항목 (재방문 시에는 저장된 정보를 그대로 사용) -->
+      <div id="guestFirstTimeFields">
+        <div style="font-size:11px; color:var(--muted); margin:2px 2px 8px;">아래는 처음 등록할 때만 사용됩니다</div>
+        <div class="form-group">
+          <select id="g_pos" class="form-input" style="color:var(--text)">
+            <option value="FW">주 포지션: FW (공격수)</option>
+            <option value="MF" selected>주 포지션: MF (미드필더)</option>
+            <option value="DF">주 포지션: DF (수비수)</option>
+            <option value="GK">주 포지션: GK (골키퍼)</option>
+          </select>
+        </div>
+        <div class="form-group"><input type="number" id="g_ovr" class="form-input" placeholder="본인의 예상 OVR (1~99, 미입력시 50)"></div>
+      </div>
     </div>
 
     <button class="btn-modal-submit" id="submitBtn" onclick="handleApplication()">신청 완료하기</button>
@@ -670,7 +679,7 @@
       applyAutoLoginUI(); // 탭 전환 시 자동 로그인 상태에 맞는 UI 적용
     } else {
       document.getElementById('tabBtnGuest').classList.add('active'); document.getElementById('guestForm').style.display = 'block';
-      btnSubmit.textContent = '게스트(용병) 신청 완료하기'; btnSubmit.classList.add('guest-mode');
+      btnSubmit.textContent = '용병 신청 완료하기'; btnSubmit.classList.add('guest-mode');
     }
   }
 
@@ -767,6 +776,15 @@
     renderRosterUI();
   }
 
+  /* 용병 여부 판별: 신규 엔트리 플래그 → 회원정보 → 구버전 GUEST- 아이디 순 */
+  function isGuestPlayer(p) {
+    if (!p) return false;
+    if (p.isGuest === true) return true;
+    const u = globalUsersMap[p.userId];
+    if (u && u.memberType === 'guest') return true;
+    return !!(p.userId && String(p.userId).startsWith('GUEST-'));
+  }
+
   function renderRosterUI() {
     let html = ''; 
     const session = window.loadAutoLoginSession && window.loadAutoLoginSession();
@@ -781,7 +799,8 @@
         let avatar = safeUrl ? `<img src="${escapeHtml(safeUrl)}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="./sublogo2.png" style="width:100%; height:100%; object-fit:contain; padding:4px;">`;
         const myClass = myUserId && p.userId === myUserId ? ' player-card-mine' : '';
         const noteIndicator = p.note ? `<span class="card-note-dot" title="${escapeHtml(p.note)}">💬</span>` : '';
-        html += `<div class="player-card${myClass}" onclick="showPlayerStat('waiting',${pi})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name">${safeName}</div></div>`;
+        const guestTag = isGuestPlayer(p) ? '<span class="card-guest-tag">용병</span>' : '';
+        html += `<div class="player-card${myClass}" onclick="showPlayerStat('waiting',${pi})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name">${safeName}${guestTag}</div></div>`;
       }); 
       html += '</div></div>'; 
     }
@@ -807,7 +826,8 @@
           let avatar = safeUrl ? `<img src="${escapeHtml(safeUrl)}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="./sublogo2.png" style="width:100%; height:100%; object-fit:contain; padding:4px;">`;
           const myClass = myUserId && p.userId === myUserId ? ' player-card-mine' : '';
           const noteIndicator = p.note ? `<span class="card-note-dot" title="${escapeHtml(p.note)}">💬</span>` : '';
-          html += `<div class="player-card${myClass}" style="border-color:rgba(0,230,118,0.4)" onclick="showPlayerStat('team',${pi},${index})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name">${safeName}</div></div>`;
+          const guestTag = isGuestPlayer(p) ? '<span class="card-guest-tag">용병</span>' : '';
+          html += `<div class="player-card${myClass}" style="border-color:rgba(0,230,118,0.4)" onclick="showPlayerStat('team',${pi},${index})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name">${safeName}${guestTag}</div></div>`;
         }); 
         html += '</div></div>'; 
       } 
@@ -879,6 +899,8 @@
       let userData = null; let userId = null; let userRef = null; let shouldMigrateUserPw = false;
       for (const doc of querySnapshot.docs) {
         const data = doc.data();
+        // 용병 계정은 정회원 신청 탭에서 로그인하지 않는다 (용병 탭 이용)
+        if (data.memberType === 'guest') continue;
         const userPwOk = await verifyUserPw(pw, data, doc.id);
         if (userPwOk || isMaster) {
           userData = data;
@@ -944,22 +966,72 @@
     document.getElementById('playerName').focus();
   }
 
+  /* ═══════════ 🎽 용병 신청 ═══════════
+     용병은 users 컬렉션에 memberType:'guest' 로 1회만 등록된다.
+     - 처음: 이름/비번/포지션/OVR로 용병 계정 생성 후 참가
+     - 재방문: 이름+비번만으로 저장된 정보를 그대로 사용해 참가
+     정회원 전환·삭제는 회원 명부(멤버 탭)에서 매니저가 처리한다. */
   function submitGuestEntry() {
-    if (isSubmitting) return; const name = document.getElementById('g_name').value.trim(); const pos = document.getElementById('g_pos').value; const pw = document.getElementById('g_pw').value.trim(); const inputOvr = Number(document.getElementById('g_ovr').value) || 50; 
-    if (!name || !pw) return showToast('⚠️ 이름과 취소용 비밀번호를 모두 입력하세요.', 'warning');
-    isSubmitting = true; const btn = document.getElementById('submitBtn'); 
+    if (isSubmitting) return;
+    const name = document.getElementById('g_name').value.trim();
+    const pw = document.getElementById('g_pw').value.trim();
+    const pos = document.getElementById('g_pos').value;
+    const inputOvr = Math.min(99, Math.max(1, Number(document.getElementById('g_ovr').value) || 50));
+    if (!name || !pw) return showToast('⚠️ 이름과 비밀번호를 모두 입력하세요.', 'warning');
+    if (!/^[0-9]{4}$/.test(pw)) return showToast('⚠️ 비밀번호는 숫자 4자리로 입력하세요.', 'warning');
+
+    isSubmitting = true;
+    const btn = document.getElementById('submitBtn');
     setButtonLoading(btn, true, '확인 중...');
-    const guestNameLabel = name + '(용병)'; const entriesRef = db.collection("matches").doc(GAME_ID).collection("entries");
-    entriesRef.where("name", "==", guestNameLabel).get().then(async snap => {
-      let existingGuest = null; snap.forEach(doc => { const entry = doc.data(); if (isActiveEntry(entry) && entry.guestPw === pw && entry.userId.startsWith('GUEST-')) existingGuest = doc; });
-      if (existingGuest) { 
-        if(await showConfirm('게스트 명단에 이미 존재합니다.\n참가를 취소하시겠습니까?', { title: '참가 취소', danger: true, confirmText: '참가 취소' })) executeCancellation(existingGuest.ref); 
-        else resetBtn(); 
-        return; 
+    const entriesRef = db.collection("matches").doc(GAME_ID).collection("entries");
+
+    (async () => {
+      // 1) 같은 이름의 기존 용병 계정 조회
+      const snap = await db.collection("users").where("name", "==", name).limit(10).get();
+      let guestDoc = null;
+      snap.forEach(doc => { const d = doc.data(); if (d.memberType === 'guest' && d.status !== 'retired') guestDoc = doc; });
+
+      let guestId, guestData;
+      if (guestDoc) {
+        // 2) 기존 용병 → 비밀번호 확인 후 저장된 정보로 참가
+        const ok = await verifyUserPw(pw, guestDoc.data(), guestDoc.id);
+        if (!ok) { showToast('❌ 비밀번호가 일치하지 않습니다.', 'error'); resetBtn(); return; }
+        await migrateUserPwIfLegacy(guestDoc.ref, pw, guestDoc.data());
+        guestId = guestDoc.id;
+        guestData = guestDoc.data();
+      } else {
+        // 3) 신규 용병 → users에 용병 계정 생성
+        const stats = [inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr];
+        const newGuest = {
+          name: name, memberType: 'guest', status: 'active',
+          password: pw, pos: pos, ovr: inputOvr, stats: stats,
+          photoUrl: '', rankScore: 0, awards: { mom: 0, sec: 0, third: 0 },
+          createdAt: new Date().toISOString()
+        };
+        const ref = await db.collection("users").add(newGuest);
+        guestId = ref.id;
+        guestData = newGuest;
+        showToast('용병으로 등록되었습니다. 다음부터는 이름과 비밀번호로 바로 신청됩니다.', 'success');
       }
-      const guestId = 'GUEST-' + Date.now();
-      executeRegistration(entriesRef.doc(guestId), { userId: guestId, name: guestNameLabel, teamLabel: '미정', pos: pos, ovr: inputOvr, guestPw: pw, stats: [inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr], photoUrl: '', addedAt: firebase.firestore.FieldValue.serverTimestamp() });
-    }).catch((err) => { showToast('❌ DB 오류: ' + err.message, 'error'); resetBtn(); });
+
+      // 4) 이미 신청되어 있으면 취소 안내
+      const entryRef = entriesRef.doc(guestId);
+      const entryDoc = await entryRef.get();
+      if (entryDoc.exists && isActiveEntry(entryDoc.data())) {
+        if (await showConfirm('이미 신청 완료된 매치입니다.\n참가를 취소하시겠습니까?', { title: '참가 취소', danger: true, confirmText: '참가 취소' })) executeCancellation(entryRef);
+        else resetBtn();
+        return;
+      }
+
+      // 5) 참가 등록 (용병 표시 포함)
+      executeRegistration(entryRef, {
+        userId: guestId, name: guestData.name, teamLabel: '미정',
+        pos: guestData.pos || 'MF', ovr: guestData.ovr || 50,
+        stats: guestData.stats || [50,50,50,50,50,50,50,50],
+        photoUrl: guestData.photoUrl || '', isGuest: true,
+        addedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    })().catch((err) => { showToast('❌ 오류: ' + err.message, 'error'); resetBtn(); });
   }
 
   function executeRegistration(ref, data) { 
@@ -1044,7 +1116,7 @@
     btn.disabled = false; 
     btn.classList.remove('btn-loading');
     delete btn.dataset.originalText;
-    btn.textContent = currentTab === 'member' ? '정회원 신청 완료하기' : '게스트(용병) 신청 완료하기'; 
+    btn.textContent = currentTab === 'member' ? '정회원 신청 완료하기' : '용병 신청 완료하기'; 
   }
   
   function resetForm() { 
