@@ -643,7 +643,7 @@
       /* ─── 팀 그리드 (row/col 대체) ─── */
       .team-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 12px;
         margin-bottom: 24px;
       }
@@ -654,7 +654,7 @@
       /* ─── 선수 카드 / pill ─── */
       .grid-list { 
         display: grid; 
-        grid-template-columns: repeat(3, 1fr); 
+        grid-template-columns: repeat(3, minmax(0, 1fr)); 
         gap: 8px; 
         /* 자식 요소가 min-width 없어도 그리드 셀 안에 갇히도록 */
         width: 100%;

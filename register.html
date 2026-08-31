@@ -83,8 +83,8 @@
     .jersey-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 700; color: var(--text); flex-shrink: 0; }
     .jersey-dot { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex-shrink: 0; display: inline-block; }
     
-    .players-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .player-card { background: linear-gradient(145deg, #1e2420, #111612); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 10px 6px 8px; position: relative; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: transform 0.2s; cursor:pointer;}
+    .players-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .player-card { min-width: 0; background: linear-gradient(145deg, #1e2420, #111612); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 10px 6px 8px; position: relative; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: transform 0.2s; cursor:pointer;}
     .player-card:active { transform: scale(0.95); }
     .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: -10px; padding: 0 4px; position: relative; z-index: 2; }
     .card-ovr { font-size: 16px; font-weight: 900; color: var(--gold); text-shadow: 1px 1px 2px rgba(0,0,0,0.8); letter-spacing: -0.5px;}
@@ -92,8 +92,9 @@
     .FW { background-color: #FF4757; } .MF { background-color: #2ED573; } .DF { background-color: #1E90FF; } .GK { background-color: #FFA502; }
     
     .card-avatar { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border); margin: 0 auto 6px; overflow: hidden; background: var(--bg); display:flex; align-items:center; justify-content:center; font-size:20px; position: relative; z-index: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    .card-name { font-size: 12px; font-weight: 900; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.5px; }
-    .card-guest-tag { display:inline-block; margin-left:4px; font-size:9px; font-weight:800; color:#5FB8FF; background:rgba(64,150,255,0.15); border:1px solid rgba(64,150,255,0.3); border-radius:5px; padding:1px 4px; vertical-align:middle; }
+    .card-name { display: flex; align-items: center; justify-content: center; gap: 2px; min-width: 0; font-size: 12px; font-weight: 900; color: var(--text); letter-spacing: -0.5px; }
+    .card-name-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-guest-tag { flex-shrink:0; font-size:8px; font-weight:800; line-height:1.3; color:#5FB8FF; background:rgba(64,150,255,0.15); border:1px solid rgba(64,150,255,0.3); border-radius:4px; padding:0 3px; letter-spacing:0; }
     .card-note-dot { position:absolute; top:6px; left:6px; width:22px; height:22px; background:var(--green); color:#000; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; box-shadow:0 2px 6px rgba(0,230,118,0.4); z-index:3; animation:notePulse 2.4s ease-in-out infinite; }
     @keyframes notePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
     .player-card-mine { border-color: rgba(0,230,118,0.6) !important; box-shadow: 0 0 0 2px rgba(0,230,118,0.15), 0 4px 12px rgba(0,230,118,0.1); }
@@ -777,6 +778,13 @@
   }
 
   /* 용병 여부 판별: 신규 엔트리 플래그 → 회원정보 → 구버전 GUEST- 아이디 순 */
+  /* 표시용 이름 정리: 구버전에서 붙던 (용병)/(게스트) 접미사 제거 (배지로 대체 표시) */
+  function cleanPlayerName(name, isGuest) {
+    let n = String(name == null ? '' : name);
+    if (isGuest) { let prev; do { prev = n; n = n.replace(/\s*\((?:용병|게스트)\)\s*$/, ''); } while (n !== prev); }
+    return n.trim() || String(name || '');
+  }
+
   function isGuestPlayer(p) {
     if (!p) return false;
     if (p.isGuest === true) return true;
@@ -792,7 +800,7 @@
     if (globalRoster.waiting.length > 0) { 
       html += '<div style="margin-bottom:24px"><div style="font-size:13px;color:var(--muted);margin-bottom:12px;font-weight:700;">⏳ 대기열 ('+globalRoster.waiting.length+'명)</div><div class="players-grid">'; 
       globalRoster.waiting.forEach((p, pi) => {
-        const safeName = escapeHtml(p.name);
+        const safeName = escapeHtml(cleanPlayerName(p.name, isGuestPlayer(p)));
         const safePos = escapeHtml(p.pos || 'MF');
         const safeOvr = escapeHtml(p.ovr);
         const safeUrl = safePhotoUrl(p.photoUrl);
@@ -800,7 +808,7 @@
         const myClass = myUserId && p.userId === myUserId ? ' player-card-mine' : '';
         const noteIndicator = p.note ? `<span class="card-note-dot" title="${escapeHtml(p.note)}">💬</span>` : '';
         const guestTag = isGuestPlayer(p) ? '<span class="card-guest-tag">용병</span>' : '';
-        html += `<div class="player-card${myClass}" onclick="showPlayerStat('waiting',${pi})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name">${safeName}${guestTag}</div></div>`;
+        html += `<div class="player-card${myClass}" onclick="showPlayerStat('waiting',${pi})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name"><span class="card-name-text">${safeName}</span>${guestTag}</div></div>`;
       }); 
       html += '</div></div>'; 
     }
@@ -819,7 +827,7 @@
         const teamDotColor = TEAM_COLORS[index % TEAM_COLORS.length].border;
         html += '<div style="margin-bottom:24px"><div class="team-header-row"><span class="team-header-title"><span class="team-dot" style="background:'+teamDotColor+';"></span>'+escapeHtml(t.name)+' ('+t.players.length+'명)</span>'+jerseyChip+'</div><div class="players-grid">'; 
         t.players.forEach((p, pi) => {
-          const safeName = escapeHtml(p.name);
+          const safeName = escapeHtml(cleanPlayerName(p.name, isGuestPlayer(p)));
           const safePos = escapeHtml(p.pos || 'MF');
           const safeOvr = escapeHtml(p.ovr);
           const safeUrl = safePhotoUrl(p.photoUrl);
@@ -827,7 +835,7 @@
           const myClass = myUserId && p.userId === myUserId ? ' player-card-mine' : '';
           const noteIndicator = p.note ? `<span class="card-note-dot" title="${escapeHtml(p.note)}">💬</span>` : '';
           const guestTag = isGuestPlayer(p) ? '<span class="card-guest-tag">용병</span>' : '';
-          html += `<div class="player-card${myClass}" style="border-color:rgba(0,230,118,0.4)" onclick="showPlayerStat('team',${pi},${index})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name">${safeName}${guestTag}</div></div>`;
+          html += `<div class="player-card${myClass}" style="border-color:rgba(0,230,118,0.4)" onclick="showPlayerStat('team',${pi},${index})">${noteIndicator}<div class="card-header"><span class="card-ovr">${safeOvr}</span><span class="card-pos ${safePos}">${safePos}</span></div><div class="card-avatar">${avatar}</div><div class="card-name"><span class="card-name-text">${safeName}</span>${guestTag}</div></div>`;
         }); 
         html += '</div></div>'; 
       } 
