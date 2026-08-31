@@ -629,18 +629,17 @@
     if (URL_MODE === 'guest') { openAppModal(); switchTab('guest'); }
   };
 
-  function openAppModal() { 
-    document.getElementById('applicationModal').classList.add('show'); 
-    document.getElementById('fabWrapper').classList.remove('open'); 
+  function openAppModal() {
+    document.getElementById('applicationModal').classList.add('show');
     applyAutoLoginUI(); // 모달 열 때마다 자동 로그인 세션 상태 반영
   }
   function closeAppModal() { document.getElementById('applicationModal').classList.remove('show'); }
 
-  function toggleFab(e) { if(e) e.stopPropagation(); document.getElementById('fabWrapper').classList.toggle('open'); }
-  document.addEventListener('click', function(event) {
-    const fab = document.getElementById('fabWrapper');
-    if (fab && fab.classList.contains('open') && !fab.contains(event.target)) fab.classList.remove('open');
-  });
+  /* 하단 고정 참가 바 표시/숨김 (성공 화면에서는 감춘다) */
+  function toggleApplyBar(show) {
+    const bar = document.getElementById('applyBar');
+    if (bar) bar.style.display = show ? 'flex' : 'none';
+  }
 
   function loadSettingsRealtime() {
     db.collection("settings").doc("system").onSnapshot((doc) => {
@@ -978,9 +977,9 @@
       });
     }).then(() => { 
       closeAppModal();
-      document.getElementById('mainContent').style.display = 'none'; 
-      document.getElementById('fabWrapper').style.display = 'none'; 
-      document.getElementById('successScreen').style.display = 'block'; 
+      document.getElementById('mainContent').style.display = 'none';
+      toggleApplyBar(false);
+      document.getElementById('successScreen').style.display = 'block';
     }).catch((err) => { showToast('❌ 등록 오류: ' + err.message, 'error'); resetBtn(); }); 
   }
 
@@ -1051,9 +1050,9 @@
   function resetForm() { 
     document.getElementById('playerName').value = ''; document.getElementById('playerPw').value = ''; 
     document.getElementById('g_name').value = ''; document.getElementById('g_pw').value = ''; document.getElementById('g_ovr').value = ''; 
-    document.getElementById('mainContent').style.display = 'block'; 
-    document.getElementById('fabWrapper').style.display = 'flex'; 
-    document.getElementById('successScreen').style.display = 'none'; 
+    document.getElementById('mainContent').style.display = 'block';
+    toggleApplyBar(true);
+    document.getElementById('successScreen').style.display = 'none';
     resetBtn(); window.scrollTo({ top: 0, behavior: 'smooth' }); 
   }
 
@@ -1218,7 +1217,7 @@
 
   function goBack() { window.location.href = 'index.html'; } function goToProfileReg() { window.location.href = 'profile.html?tab=reg'; }
   // showToast는 공용 라이브러리에서 제공 (page bottom 참조)
-  function openAdminPwModal() { document.getElementById('adminPwModal').classList.add('show'); document.getElementById('adminPwInput').value = ''; document.getElementById('adminPwInput').focus(); document.getElementById('fabWrapper').classList.remove('open'); }
+  function openAdminPwModal() { document.getElementById('adminPwModal').classList.add('show'); document.getElementById('adminPwInput').value = ''; document.getElementById('adminPwInput').focus(); }
   function closeAdminPwModal() { document.getElementById('adminPwModal').classList.remove('show'); }
   async function confirmAdminPw() {
     var pw = document.getElementById('adminPwInput').value.trim();

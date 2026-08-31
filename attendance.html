@@ -817,7 +817,7 @@ _dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
   // FAB 토글 (공통)
   function toggleFab(e) { 
     if(e) e.stopPropagation(); 
-    document.getElementById('fabWrapper').classList.toggle('open'); 
+    const _f=document.getElementById('fabWrapper'); if(_f) _f.classList.toggle('open'); 
   }
   document.addEventListener('click', function(event) {
     const fab = document.getElementById('fabWrapper');

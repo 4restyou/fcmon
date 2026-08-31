@@ -778,7 +778,7 @@
   // FAB 토글 (공통)
   function toggleFab(e) { 
     if(e) e.stopPropagation(); 
-    document.getElementById('fabWrapper').classList.toggle('open'); 
+    const _f=document.getElementById('fabWrapper'); if(_f) _f.classList.toggle('open'); 
   }
   document.addEventListener('click', function(event) {
     const fab = document.getElementById('fabWrapper');
