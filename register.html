@@ -1012,7 +1012,9 @@
         const stats = [inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr];
         const newGuest = {
           name: name, memberType: 'guest', status: 'active',
-          password: pw, pos: pos, ovr: inputOvr, stats: stats,
+          // 신규 회원 등록과 동일한 방식: 평문 대신 해시 저장
+          password: '0000', passwordHash: await makeUserPwHash(pw),
+          pos: pos, ovr: inputOvr, stats: stats,
           photoUrl: '', rankScore: 0, awards: { mom: 0, sec: 0, third: 0 },
           createdAt: new Date().toISOString()
         };
