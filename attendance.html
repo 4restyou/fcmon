@@ -84,7 +84,9 @@
     <div class="summary-val" id="totalMatchesCount">-</div>
   </div>
 
-  <div class="section-title">전체 선수 출석률 순위</div>
+  <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">전체 선수 출석률 순위
+    <button onclick="exportAttendanceCsv()" style="background:transparent; border:1px solid var(--border); color:var(--muted2); padding:5px 10px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; -webkit-appearance:none;">CSV 내보내기</button>
+  </div>
 
   <div id="attSkeleton">
     <div class="skeleton" style="height:78px;"></div>
@@ -217,7 +219,16 @@
     });
   }
 
+  let _attRows = [], _attTotal = 0;
+  function exportAttendanceCsv() {
+    if (!_attRows.length) return alert('내보낼 데이터가 없습니다.');
+    const rows = [['순위','이름','포지션','출석','총 매치','출석률(%)']];
+    _attRows.forEach((u, i) => rows.push([i + 1, u.name, u.pos || '', u.attCount, _attTotal, u.attRate]));
+    downloadCsv('FCMON_출석률_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+  }
+
   function renderAttendance(users, totalMatches) {
+    _attRows = users; _attTotal = totalMatches;
     document.getElementById('attSkeleton').style.display = 'none';
     
     if (users.length === 0) {

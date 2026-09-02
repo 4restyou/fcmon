@@ -30,6 +30,17 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+/* CSV 다운로드: rows = 2차원 배열, 엑셀 한글 깨짐 방지용 BOM 포함 */
+function downloadCsv(filename, rows) {
+  const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const csv = '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 /* 안전한 사진 URL만 통과 (http(s) 또는 허용된 data:image), 그 외 빈 문자열 */
 function safePhotoUrl(url) {
   if (!url) return '';

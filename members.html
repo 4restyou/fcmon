@@ -272,6 +272,9 @@
       <option value="recent">가입 최신순</option>
     </select>
   </div>
+  <div style="text-align:right; margin:-8px 0 12px;">
+    <button onclick="exportMembersCsv()" style="background:transparent; border:1px solid var(--border); color:var(--muted2); padding:7px 12px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; -webkit-appearance:none;">CSV 내보내기</button>
+  </div>
   
   <!-- 회원 리스트 -->
   <div id="memberList" class="member-list">
@@ -691,6 +694,20 @@
   /* ═══════════════════════ 상태 변경 ═══════════════════════ */
   /* 용병 → 정회원 전환: memberType만 'member'로 바꾼다.
      (규칙 케이스4 허용 범위 — name/pos/ovr/stats/rankScore/awards 불변) */
+  /* 회원 명부 CSV (연락처 포함 → 마스터 인증) */
+  async function exportMembersCsv() {
+    if (!(await ensureMasterAuth())) return;
+    const st = { active:'활성', inactive:'휴면', retired:'탈퇴' };
+    const rows = [['이름','구분','상태','포지션','OVR','랭킹점수','MOM','2위','3위','연락처','인스타그램','메모','등록일']];
+    allMembers.forEach(m => rows.push([
+      m.name, m.memberType === 'guest' ? '용병' : '정회원', st[m.status] || m.status, m.pos, m.ovr, m.rankScore || 0,
+      (m.awards||{}).mom || 0, (m.awards||{}).sec || 0, (m.awards||{}).third || 0,
+      m.contact || '', m.instagram || '', m.memo || '',
+      m.createdAt && m.createdAt.seconds ? new Date(m.createdAt.seconds*1000).toLocaleDateString('ko-KR') : (m.createdAt || '')
+    ]));
+    downloadCsv('FCMON_회원명부_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+  }
+
   async function promoteGuestToMember() {
     if (!_currentMemberId) return;
     const m = allMembers.find(x => x.id === _currentMemberId);
