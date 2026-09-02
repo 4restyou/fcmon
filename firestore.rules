@@ -100,10 +100,12 @@ service cloud.firestore {
         && isValidStats(request.resource.data.stats)
         && isValidPhoto(request.resource.data.get('photoUrl', null))
         // 생성 시점에는 rankScore 0, awards 초기값만 허용
-        && request.resource.data.get('rankScore', 0) == 0
-        && request.resource.data.get('awards', {mom:0, sec:0, third:0}).mom == 0
-        && request.resource.data.get('awards', {mom:0, sec:0, third:0}).sec == 0
-        && request.resource.data.get('awards', {mom:0, sec:0, third:0}).third == 0;
+        // ⚠️ get()의 기본값으로 맵 리터럴을 쓰면 평가가 실패해 생성이 항상 거부되므로
+        //    awards/rankScore는 필수 필드로 두고 일반 접근으로 검증한다.
+        && request.resource.data.rankScore == 0
+        && request.resource.data.awards.mom == 0
+        && request.resource.data.awards.sec == 0
+        && request.resource.data.awards.third == 0;
       
       // 수정: 세 가지 경우만 허용
       // 1) 프로필 수정 (name, pos, ovr, stats, photoUrl, password)
