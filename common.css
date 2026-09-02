@@ -175,3 +175,86 @@ body.has-tabbar .container { padding-bottom: 140px; }
 .fcm-tab svg { display: block; }
 .fcm-tab.on { color: var(--green); }
 .fcm-tab:active { transform: scale(0.92); }
+
+
+/* ─── 🧩 v3 공용 컴포넌트 (페이지 간 일관성) ───────────── */
+
+/* 서브페이지 헤더: 로고 대신 페이지 제목 (탭바가 위치를 알려주므로 ← 불필요) */
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 0 16px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.4px;
+  color: var(--text);
+}
+.page-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.page-head-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* 아이콘 버튼 (헤더 우측 액션) */
+.icon-btn {
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--muted2);
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: color .15s, border-color .15s, transform .1s;
+}
+.icon-btn:active { color: var(--green); border-color: var(--border-hover); transform: scale(0.94); }
+
+/* 세그먼트 탭: 형광 채움 대신 은은한 틴트 (랭킹 페이지 기준으로 통일) */
+.seg-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 5px;
+  margin-bottom: 20px;
+}
+.seg-tab {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: .2s;
+}
+.seg-tab.active {
+  background: var(--green-dim);
+  color: var(--green);
+  border-color: rgba(44,224,128,0.3);
+}
+
+/* 보조 텍스트 버튼 (툴바 등) */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted2);
+  border-radius: 9px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: color .15s, border-color .15s;
+}
+.btn-ghost:active { color: var(--green); border-color: var(--border-hover); }

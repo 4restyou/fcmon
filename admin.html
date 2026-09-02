@@ -34,7 +34,7 @@
         content: '';
         position: fixed;
         inset: 0;
-        background: radial-gradient(ellipse 60% 40% at 80% 5%, rgba(0,230,118,0.05) 0%, transparent 70%);
+        background: radial-gradient(ellipse 60% 40% at 80% 5%, rgba(44,224,128,0.05) 0%, transparent 70%);
         pointer-events: none;
         z-index: 0;
       }
@@ -297,7 +297,7 @@
       /* 매치 종료 카드 (특별 강조) */
       .section-card.match-end-card {
         margin-top: 20px;
-        background: linear-gradient(135deg, rgba(255,71,87,0.04), rgba(255,71,87,0.01));
+        background: var(--card);
         border-color: rgba(255,71,87,0.15);
       }
       .section-card.match-end-card::before {
@@ -476,7 +476,7 @@
       }
       .team-ovr-bar-fill {
         height: 100%;
-        background: linear-gradient(90deg, var(--green), var(--green-dark));
+        background: var(--green);
         border-radius: 3px;
         transition: width 0.4s ease;
       }
@@ -803,16 +803,15 @@
       
       .btn-admin-primary { 
         width: 100%; padding: 16px; 
-        background: linear-gradient(135deg, var(--green), var(--green-dark)); 
-        color: #000; border: none; border-radius: 12px; 
+        background: var(--green);
+        color: #08130C; border: none; border-radius: 12px; 
         font-size: 16px; font-weight: 900; 
-        box-shadow: 0 4px 12px rgba(0,230,118,0.25); 
         cursor: pointer; 
       }
       @media (hover: hover) {
         .btn-admin-primary:hover { 
           transform: translateY(-1px); 
-          box-shadow: 0 6px 18px rgba(0,230,118,0.35); 
+          box-shadow: 0 6px 18px rgba(44,224,128,0.35); 
         }
       }
       .btn-admin-primary:active { transform: scale(0.98); }
@@ -872,7 +871,6 @@
         cursor: pointer;
         letter-spacing: -0.5px;
         transition: 0.2s;
-        box-shadow: 0 4px 12px rgba(255,71,87,0.25);
       }
       @media (hover: hover) {
         .btn-end-match:hover { 
@@ -883,7 +881,7 @@
       }
       .btn-end-match:active { background-color: #c73447; transform: scale(0.98); }
       
-      /* ═══════════════════════ 📋 폼 스타일 (다른 페이지와 통일) ═══════════════════════ */
+      /* ═══════════════════════ 폼 스타일 (다른 페이지와 통일) ═══════════════════════ */
       .form-group { margin-bottom: 14px; }
       .form-label { 
         display: block; font-size: 11px; font-weight: 700; 
@@ -973,7 +971,7 @@
       }
       .btn-inline:active { background: var(--green-dark); transform: scale(0.98); }
       
-      /* ═══════════════════════ 🪟 바텀시트 모달 (다른 페이지와 통일) ═══════════════════════ */
+      /* ═══════════════════════ 바텀시트 모달 (다른 페이지와 통일) ═══════════════════════ */
       /* 모달 기본 (모바일): 바텀시트 */
       .modal-bg {
         position: fixed;
@@ -1140,26 +1138,20 @@
       #saveStatus:empty { opacity: 0; }
       #saveStatus:not(:empty) { opacity: 1; }
 
-      /* ─── 📊 상태 요약 바 ─── */
+      /* ─── 상태 요약 바 ─── */
       .status-bar {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         padding: 14px 12px;
-        background: linear-gradient(135deg, var(--bg2), var(--bg3));
+        background: var(--card);
         border: 1px solid var(--border);
         border-radius: 14px;
         margin-bottom: 18px;
         position: relative;
         overflow: hidden;
       }
-      .status-bar::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(ellipse at top right, rgba(0,230,118,0.08) 0%, transparent 60%);
-        pointer-events: none;
-      }
+      
       .status-item {
         text-align: center;
         position: relative;
@@ -1205,7 +1197,7 @@
       }
       .collapsible-trigger:hover { border-color: var(--border-hover); }
       .collapsible-trigger.is-open { 
-        border-color: rgba(0,230,118,0.25);
+        border-color: rgba(44,224,128,0.25);
         border-bottom-left-radius: 0; 
         border-bottom-right-radius: 0;
       }
@@ -1247,7 +1239,7 @@
       }
       .collapsible-body > .collapsible-inner {
         background: var(--bg2);
-        border: 1px solid rgba(0,230,118,0.25);
+        border: 1px solid rgba(44,224,128,0.25);
         border-top: none;
         border-bottom-left-radius: 12px;
         border-bottom-right-radius: 12px;
@@ -1267,13 +1259,13 @@
         <div class="admin-top-nav-left">
           <button class="btn-header-nav" onclick="goToMain()">메인</button>
           <button class="btn-header-nav" onclick="goToRegister()">대기열</button>
-          <button class="btn-header-edit" onclick="openEditMatchModal()">수정</button>
+          <button class="btn-header-edit" onclick="openEditMatchModal()">매치 수정</button>
         </div>
-        <div class="admin-top-nav-title">팀 배정 (관리자)</div>
+        <div class="admin-top-nav-title">팀 배정</div>
         <div class="admin-top-nav-right"><span id="saveStatus"></span></div>
       </div>
 
-      <!-- ═══════════════ ① 📊 상태 요약 바 ═══════════════ -->
+      <!-- ═══════════════ ① 상태 요약 바 ═══════════════ -->
       <div class="status-bar">
         <div class="status-item">
           <div class="status-label">배정</div>
@@ -1451,7 +1443,7 @@
       </div>
     </div>
 
-    <!-- ⚙️ 선수 스탯 수정 모달 -->
+    <!-- 선수 스탯 수정 모달 -->
     <div class="modal-bg" id="statModal">
       <div class="modal-sheet">
         <div class="modal-pill"></div>
@@ -1485,16 +1477,16 @@
           <span style="color: var(--muted2); font-size: 13px;">종합 OVR:</span>
           <span class="ovr-val" id="m_ovr">50</span>
         </div>
-        <button class="btn-modal-submit" onclick="saveStats()">💾 저장하기</button>
+        <button class="btn-modal-submit" onclick="saveStats()">저장하기</button>
       </div>
     </div>
 
-    <!-- 📊 전력 비교 차트 모달 -->
+    <!-- 전력 비교 차트 모달 -->
     <div class="modal-bg" id="chartModal">
       <div class="modal-sheet">
         <div class="modal-pill"></div>
         <div class="modal-header-bar">
-          <div class="modal-title" id="chartTeamName">📊 전력 비교</div>
+          <div class="modal-title" id="chartTeamName">전력 비교</div>
           <button class="modal-close-btn" onclick="closeModal('chartModal')">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -1505,18 +1497,18 @@
       </div>
     </div>
 
-    <!-- 🏁 매치 종료 및 시상 모달 -->
+    <!-- 매치 종료 및 시상 모달 -->
     <div class="modal-bg" id="endMatchModal">
       <div class="modal-sheet">
         <div class="modal-pill"></div>
         <div class="modal-header-bar">
-          <div class="modal-title modal-title-danger">🏁 경기 결과 기록</div>
+          <div class="modal-title modal-title-danger">경기 결과 기록</div>
           <button class="modal-close-btn" onclick="closeModal('endMatchModal')">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
         <div class="award-win-section">
-          <label class="form-label award-label-win">🏆 오늘의 우승팀 (전원 +1점)</label>
+          <label class="form-label award-label-win">오늘의 우승팀 (전원 +1점)</label>
           <select id="awardWinTeam" class="form-input"></select>
         </div>
         <div class="award-section form-group">
@@ -1532,16 +1524,16 @@
           <label class="form-label award-label-bronze">🥉 3위 (+1)</label>
           <select id="awardThird" class="form-input"></select>
         </div>
-        <button class="btn-modal-submit btn-modal-danger" onclick="executeEndMatch()">🏆 종료 및 랭킹반영</button>
+        <button class="btn-modal-submit btn-modal-danger" onclick="executeEndMatch()">종료 및 랭킹반영</button>
       </div>
     </div>
 
-    <!-- 📱 매치 결과 공유 카드 모달 -->
+    <!-- 매치 결과 공유 카드 모달 -->
     <div class="modal-bg" id="resultCardModal">
       <div class="modal-sheet" style="max-width: 420px;">
         <div class="modal-pill"></div>
         <div class="modal-header-bar">
-          <div class="modal-title">📱 매치 결과 카드</div>
+          <div class="modal-title">매치 결과 카드</div>
           <button class="modal-close-btn" onclick="closeResultCardModal()">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -1556,17 +1548,17 @@
         <!-- 버튼들 -->
         <div style="display:flex; gap:8px; margin-top:16px;">
           <button class="btn-admin-secondary" onclick="closeResultCardModal()" style="flex:1;">닫기</button>
-          <button class="btn-admin-primary" onclick="downloadResultCard()" id="shareCardBtn" style="flex:2;">📱 이미지 저장/공유</button>
+          <button class="btn-admin-primary" onclick="downloadResultCard()" id="shareCardBtn" style="flex:2;">이미지 저장/공유</button>
         </div>
       </div>
     </div>
 
-    <!-- 👕 유니폼 관리 모달 -->
+    <!-- 유니폼 관리 모달 -->
     <div class="modal-bg" id="jerseyModal">
       <div class="modal-sheet">
         <div class="modal-pill"></div>
         <div class="modal-header-bar">
-          <div class="modal-title">👕 유니폼 관리</div>
+          <div class="modal-title">유니폼 관리</div>
           <button class="modal-close-btn" onclick="closeModal('jerseyModal')">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -1590,8 +1582,8 @@
           <div class="form-group">
             <label class="form-label" style="font-size:11px;">색상</label>
             <div style="display:flex; align-items:center; gap:10px;">
-              <input type="color" id="jerseyColor" value="#00E676" style="width:50px; height:40px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:transparent;">
-              <input type="text" id="jerseyColorHex" class="form-input" value="#00E676" style="flex:1;" maxlength="7">
+              <input type="color" id="jerseyColor" value="var(--green)" style="width:50px; height:40px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:transparent;">
+              <input type="text" id="jerseyColorHex" class="form-input" value="var(--green)" style="flex:1;" maxlength="7">
             </div>
           </div>
           <div style="display:flex; gap:8px;">
@@ -1674,7 +1666,7 @@
       }
       /* ═════════════════════════════════════════════════════════════════════════════ */
 
-      /* ═══════════════════════ 📊 Chart.js 다크 테마 기본값 ═══════════════════════ */
+      /* ═══════════════════════ Chart.js 다크 테마 기본값 ═══════════════════════ */
       if (typeof Chart !== 'undefined') {
         Chart.defaults.color = '#E8F5E9';
         Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
@@ -1692,7 +1684,7 @@
       let saveTimeout = null, isSaving = false;
       let radarChart;
       
-      // 👕 유니폼 관리
+      // 유니폼 관리
       let jerseyList = []; // Firestore에서 불러온 유니폼 목록
       let teamJerseys = {}; // { teamIdx: jerseyId } — 팀별 현재 선택된 유니폼
       
@@ -1702,12 +1694,12 @@
       // 기본 유니폼 (첫 관리 시 Firestore에 없으면 참고용)
       const DEFAULT_JERSEYS = [
         { id: 'j_white',   name: '유니폼 백색', color: '#FFFFFF' },
-        { id: 'j_green',   name: '유니폼 초록색', color: '#00E676' },
+        { id: 'j_green',   name: '유니폼 초록색', color: 'var(--green)' },
         { id: 'j_vest_a',  name: '조끼 A', color: '#FF4757' },
         { id: 'j_vest_b',  name: '조끼 B', color: '#40C4FF' },
       ];
 
-      /* ═══════════════════════ 🪟 바텀시트 모달 제어 ═══════════════════════ */
+      /* ═══════════════════════ 바텀시트 모달 제어 ═══════════════════════ */
       function openSheet(id) {
         document.getElementById(id).classList.add('show');
       }
@@ -1906,7 +1898,7 @@
           const currentJerseyId = teamJerseys[tIdx] || '';
           let jerseyChipHtml = '';
           if (jerseyList.length > 0) {
-            let jerseyOptions = '<option value="">👕 유니폼 선택</option>';
+            let jerseyOptions = '<option value="">유니폼 선택</option>';
             jerseyList.forEach(j => {
               const selected = j.id === currentJerseyId ? ' selected' : '';
               jerseyOptions += `<option value="${escapeHtml(j.id)}"${selected}>${escapeHtml(j.name)}</option>`;
@@ -1968,7 +1960,7 @@
         updateStatusBar();
       }
 
-      /* ═══════════════ 📊 상태 요약 바 업데이트 ═══════════════ */
+      /* ═══════════════ 상태 요약 바 업데이트 ═══════════════ */
       // updateStatusBar는 renderAll() 내부 양쪽 return 경로에서 호출됨
       function updateStatusBar() {
         const assigned = flattenTeams().length;
@@ -2260,9 +2252,9 @@
           });
           return batch.commit();
         }).then(() => {
-          isSaving = false; document.getElementById('saveStatus').innerText = "✅ 저장됨"; setTimeout(() => { document.getElementById('saveStatus').innerText = ""; }, 2000);
+          isSaving = false; document.getElementById('saveStatus').innerText = "저장됨"; setTimeout(() => { document.getElementById('saveStatus').innerText = ""; }, 2000);
           if(cb) cb();
-        }).catch(err => { isSaving = false; document.getElementById('saveStatus').innerText = "❌ 저장 실패"; });
+        }).catch(err => { isSaving = false; document.getElementById('saveStatus').innerText = "저장 실패"; });
       }
 
       let currentEditPlayer = null; 
@@ -2282,7 +2274,7 @@
         if (!currentEditPlayer.isGuest && currentEditPlayer.userId) { db.collection("users").doc(currentEditPlayer.userId).update({ pos: pos, stats: statsArr, ovr: ovr }); }
       }
 
-      /* ═══════════════════════ 👕 유니폼 관리 ═══════════════════════ */
+      /* ═══════════════════════ 유니폼 관리 ═══════════════════════ */
       
       // 유니폼 목록 실시간 구독 (페이지 로드 시 1회 호출)
       function loadJerseysRealtime() {
@@ -2340,8 +2332,8 @@
       function resetJerseyForm() {
         document.getElementById('jerseyEditId').value = '';
         document.getElementById('jerseyName').value = '';
-        document.getElementById('jerseyColor').value = '#00E676';
-        document.getElementById('jerseyColorHex').value = '#00E676';
+        document.getElementById('jerseyColor').value = 'var(--green)';
+        document.getElementById('jerseyColorHex').value = 'var(--green)';
         document.getElementById('jerseyFormTitle').textContent = '+ 새 유니폼 추가';
         document.getElementById('jerseySaveBtn').textContent = '저장';
       }
@@ -2403,7 +2395,7 @@
         document.getElementById('jerseyName').value = jersey.name;
         document.getElementById('jerseyColor').value = jersey.color;
         document.getElementById('jerseyColorHex').value = jersey.color;
-        document.getElementById('jerseyFormTitle').textContent = '✏️ 유니폼 수정';
+        document.getElementById('jerseyFormTitle').textContent = '유니폼 수정';
         document.getElementById('jerseySaveBtn').textContent = '수정 저장';
       }
       
@@ -2452,7 +2444,7 @@
       // 🔄 Swap 로직: 같은 유니폼을 쓰는 팀이 있으면 서로 맞교환
       function setTeamJersey(tIdx, jerseyId) {
         if (!jerseyId) {
-          // "👕 유니폼 선택" (빈 값) → 해당 팀 배정 해제
+          // "유니폼 선택" (빈 값) → 해당 팀 배정 해제
           delete teamJerseys[tIdx];
         } else {
           // 같은 유니폼을 쓰는 다른 팀 찾기
@@ -2479,9 +2471,9 @@
             const myTeamName = TEAM_NAMES[tIdx] || ('팀' + (tIdx + 1));
             const otherTeamName = TEAM_NAMES[duplicateTeamIdx] || ('팀' + (duplicateTeamIdx + 1));
             if (myOldJerseyId) {
-              showToast(`👕 ${myTeamName} ↔ ${otherTeamName} 유니폼이 맞교환되었습니다`, 'success');
+              showToast(`${myTeamName} ↔ ${otherTeamName} 유니폼이 맞교환되었습니다`, 'success');
             } else {
-              showToast(`👕 ${otherTeamName}의 유니폼이 해제되었습니다 (중복 방지)`, 'info');
+              showToast(`${otherTeamName}의 유니폼이 해제되었습니다 (중복 방지)`, 'info');
             }
           } else {
             // 중복 없음 → 그냥 배정
@@ -2489,7 +2481,7 @@
           }
         }
         
-        renderAll();    // ✅ 즉시 UI 반영 (드롭다운 + 색상 미리보기 갱신)
+        renderAll();    // 즉시 UI 반영 (드롭다운 + 색상 미리보기 갱신)
         triggerSave();  // Firestore 저장
       }
       
@@ -2599,7 +2591,7 @@
           .catch(err => { showToast("오류: " + err.message, 'error'); setButtonLoading(btn, false); });
       }
       
-      /* ═══════════════════════ 📱 매치 결과 공유 카드 ═══════════════════════ */
+      /* ═══════════════════════ 매치 결과 공유 카드 ═══════════════════════ */
       
       let _resultCardData = null;
       
@@ -2653,7 +2645,7 @@
         let podiumHtml = '';
         if (data.momName) {
           podiumHtml += `
-            <div style="display: flex; align-items: center; gap: 12px; background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.3); border-radius: 12px; padding: 10px; margin-top: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px; background: rgba(44,224,128,0.08); border: 1px solid rgba(44,224,128,0.3); border-radius: 12px; padding: 10px; margin-top: 10px;">
               <div style="width: 54px; height: 54px; border-radius: 50%; background: #051008; border: 2px solid #FFD700; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                 <img src="${safePhotoUrl}" crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='./sublogo2.png';">
               </div>
@@ -2693,28 +2685,28 @@
         // 우승팀 섹션 (있을 때만)
         const winHtml = data.winTeamName ? `
           <div style="background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3); border-radius: 12px; padding: 12px; margin-top: 14px; text-align: center;">
-            <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; margin-bottom: 4px; font-weight: 900;">🏆 CHAMPIONS</div>
+            <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; margin-bottom: 4px; font-weight: 900;">CHAMPIONS</div>
             <div style="font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 1px;">${safeWinTeam}</div>
           </div>
         ` : '';
         
         const cardHtml = `
-          <div id="resultCardCapture" style="width: 340px; background: linear-gradient(160deg, #0f1f15 0%, #051008 50%, #0a1a10 100%); border: 2px solid #00E676; border-radius: 18px; padding: 24px 20px; font-family: 'Noto Sans KR', 'Arial', sans-serif; box-sizing: border-box; color: #fff; position: relative; overflow: hidden;">
-            <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, #00E676, transparent);"></div>
+          <div id="resultCardCapture" style="width: 340px; background: linear-gradient(160deg, #0f1f15 0%, #051008 50%, #0a1a10 100%); border: 2px solid var(--green); border-radius: 18px; padding: 24px 20px; font-family: 'Noto Sans KR', 'Arial', sans-serif; box-sizing: border-box; color: #fff; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, var(--green), transparent);"></div>
             
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
               <div style="display: flex; align-items: center; gap: 6px;">
                 <img src="./mainlogo.png" crossorigin="anonymous" alt="FCMON" style="height: 24px; width: auto; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div style="display: none; align-items: center; gap: 6px;">
-                  <div style="width: 24px; height: 24px; background: #00E676; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; font-size: 13px;">⚽</div>
-                  <div style="font-weight: 900; font-size: 13px; letter-spacing: 2px; color: #00E676;">FCMON</div>
+                  <div style="width: 24px; height: 24px; background: var(--green); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; font-size: 13px;">⚽</div>
+                  <div style="font-weight: 900; font-size: 13px; letter-spacing: 2px; color: var(--green);">FCMON</div>
                 </div>
               </div>
               <div style="font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 1px;">MATCH REPORT</div>
             </div>
             
             <div style="text-align: center; padding: 10px 0 14px; border-bottom: 1px dashed rgba(255,255,255,0.15);">
-              <div style="font-size: 11px; color: rgba(255,255,255,0.55); margin-bottom: 2px;">🏟 ${safeLocation}</div>
+              <div style="font-size: 11px; color: rgba(255,255,255,0.55); margin-bottom: 2px;">${safeLocation}</div>
               <div style="font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #fff;">${dateStr}</div>
             </div>
             
@@ -2724,7 +2716,7 @@
             <div style="display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.15); font-size: 11px; color: rgba(255,255,255,0.5);">
               <div>👥 ${data.totalParticipants}명 참가</div>
               <div style="width: 1px; height: 10px; background: rgba(255,255,255,0.2);"></div>
-              <div>⚽ ${data.totalTeams}개 팀</div>
+              <div>${data.totalTeams}개 팀</div>
             </div>
           </div>
         `;
@@ -2835,14 +2827,14 @@
       }
 
       function copyKaTalk() {
-        let txt = "🏟️ FCMON 결과\n\n";
+        let txt = "FCMON 결과\n\n";
         teamsData.forEach((t, i) => { 
           if(!t.length) return;
           txt += "[" + TEAM_NAMES[i] + "]";
           // 유니폼 정보 추가
           const jerseyId = teamJerseys[i] || '';
           const jersey = jerseyList.find(j => j.id === jerseyId);
-          if (jersey) txt += " 👕 " + jersey.name;
+          if (jersey) txt += " " + jersey.name;
           txt += "\n";
           let pNames = []; 
           t.forEach(p => pNames.push("[" + (p.pos || 'MF') + "] " + p.name)); 
@@ -2856,7 +2848,7 @@
       function copyGuestLink() {
         // 현재 인터넷 주소에서 호스트 부분만 따와서 게스트 전용 링크 생성
         const guestUrl = window.location.origin + '/register.html?gameId=' + GAME_ID + '&mode=guest';
-        const txt = "🏟️ FCMON 풋살 게스트 초대 🏟️\n\n아래 링크를 눌러 용병 참가를 신청해주세요!\n" + guestUrl;
+        const txt = "FCMON 풋살 게스트 초대 🏟️\n\n아래 링크를 눌러 용병 참가를 신청해주세요!\n" + guestUrl;
         
         const el = document.createElement('textarea'); 
         el.value = txt; 
@@ -2926,7 +2918,7 @@
     background: var(--bg2, #0f1510);
     color: var(--text, #E8F5E9);
     border: 1px solid var(--border, rgba(255,255,255,0.07));
-    border-left: 3px solid var(--green, #00E676);
+    border-left: 3px solid var(--green, var(--green));
     border-radius: 12px;
     padding: 12px 18px;
     font-size: 14px;
@@ -2939,7 +2931,7 @@
     line-height: 1.5;
   }
   .fcm-toast.is-leaving { animation: fcm-toast-out 0.2s ease forwards; }
-  .fcm-toast-success { border-left-color: var(--green, #00E676); }
+  .fcm-toast-success { border-left-color: var(--green, var(--green)); }
   .fcm-toast-warning { border-left-color: #FFCA28; }
   .fcm-toast-error   { border-left-color: #FF4757; }
   .fcm-toast-info    { border-left-color: #40C4FF; }
@@ -2981,7 +2973,7 @@
   .fcm-dialog-title {
     font-size: 16px;
     font-weight: 900;
-    color: var(--green, #00E676);
+    color: var(--green, var(--green));
     margin-bottom: 10px;
     letter-spacing: -0.3px;
   }
@@ -3008,7 +3000,7 @@
     margin-bottom: 18px;
     transition: border-color 0.2s;
   }
-  .fcm-dialog-input:focus { border-color: var(--green, #00E676); }
+  .fcm-dialog-input:focus { border-color: var(--green, var(--green)); }
   .fcm-dialog-input::placeholder { color: var(--muted, #5a6e5c); }
   .fcm-dialog-actions {
     display: flex;
@@ -3033,7 +3025,7 @@
   }
   .fcm-dialog-btn-cancel:hover { background: var(--bg3, #161d17); }
   .fcm-dialog-btn-confirm {
-    background: var(--green, #00E676);
+    background: var(--green, var(--green));
     color: #000;
   }
   .fcm-dialog-btn-confirm.is-danger {
@@ -3102,7 +3094,7 @@
     }
   }
   
-  /* ✅ showConfirm - Promise<boolean> */
+  /* showConfirm - Promise<boolean> */
   window.showConfirm = function(message, opts) {
     opts = opts || {};
     const ov = ensureDialogOverlay();
@@ -3231,8 +3223,8 @@ _dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
   .fcm-undo-btn {
     flex-shrink: 0;
     background: transparent;
-    border: 1px solid var(--green, #00E676);
-    color: var(--green, #00E676);
+    border: 1px solid var(--green, var(--green));
+    color: var(--green, var(--green));
     border-radius: 8px;
     padding: 6px 14px;
     font-size: 13px;
@@ -3242,7 +3234,7 @@ _dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
     letter-spacing: -0.3px;
   }
   .fcm-undo-btn:hover, .fcm-undo-btn:active { 
-    background: var(--green, #00E676); 
+    background: var(--green, var(--green)); 
     color: #000;
   }
   /* 진행 상태 바 - 남은 시간 시각화 */
@@ -3251,7 +3243,7 @@ _dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
     bottom: 0;
     left: 0;
     height: 2px;
-    background: var(--green, #00E676);
+    background: var(--green, var(--green));
     width: 100%;
     transform-origin: left center;
     animation: fcm-undo-countdown linear forwards;

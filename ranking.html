@@ -78,7 +78,7 @@
     .history-awards-inline strong { color: var(--green); font-weight: 700; }
     .win-badge { display: inline-block; background-color: rgba(255,165,2,0.1); color: #FFA502; border: 1px solid rgba(255,165,2,0.3); padding: 2px 6px; border-radius: 6px; font-size: 11px; font-weight: 900; margin-bottom: 6px; align-self: flex-start; }
 
-    /* 📜 매치 상세 모달 */
+    /* 매치 상세 모달 */
     .detail-modal-overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.8);
@@ -129,7 +129,7 @@
     .detail-modal-title { font-size: 16px; font-weight: 900; color: var(--green); margin-bottom: 2px; }
     .detail-modal-date { font-size: 12px; color: var(--muted); font-family: monospace; }
     .detail-modal-close { background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; flex-shrink: 0; }
-    /* ✏️ 매치 기록 수정 모달 */
+    /* 매치 기록 수정 모달 */
     #editAwardsModal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 4100; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.25s; }
     #editAwardsModal.show { opacity: 1; }
     .edit-modal-content { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 20px; max-width: 420px; width: 100%; max-height: 92vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.32, 1, 0.23, 1); }
@@ -150,7 +150,7 @@
     .detail-edit-btn:hover { background: rgba(255,165,2,0.1); border-color: #FFA502; }
     .detail-edit-btn:active { transform: scale(0.92); }
     
-    /* 📱 공유 카드 모달 */
+    /* 공유 카드 모달 */
     #shareCardModal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 4000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.25s; }
     #shareCardModal.show { opacity: 1; }
     .share-modal-overlay { width: 100%; display: flex; align-items: center; justify-content: center; }
@@ -200,9 +200,8 @@
 <body class="has-tabbar">
 
 <div class="container">
-  <div class="header">
-    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img" loading="eager">
-    <div class="back-btn" onclick="goBack()">←</div>
+  <div class="page-head">
+    <div><div class="page-title">랭킹</div><div class="page-sub">선수 랭킹 · 매치 기록 · 월간 리포트</div></div>
   </div>
 
   <div class="tabs">
@@ -677,7 +676,7 @@
       if (secondName) awardsText.push(`🥈<strong>${escapeHtml(secondName)}</strong>`);
       if (thirdName) awardsText.push(`🥉<strong>${escapeHtml(thirdName)}</strong>`);
       const awardStr = awardsText.length > 0 ? awardsText.join('  |  ') : '기록된 선수가 없습니다';
-      const winBadge = winTeamName ? `<div class="win-badge">🏆 우승: ${escapeHtml(winTeamName)}</div>` : '';
+      const winBadge = winTeamName ? `<div class="win-badge">우승: ${escapeHtml(winTeamName)}</div>` : '';
       const safeLocation = escapeHtml(m.location || '상무풋살');
       
       // teams 스냅샷이 없던 예전 기록도 matches/{gameId}/entries로 상세 복원 시도
@@ -689,7 +688,7 @@
       
       html += `<div class="history-item${clickClass}"${clickHandler}>${winBadge}
         <div class="history-header">
-          <span class="history-loc">🏟️ ${safeLocation}${participantsInfo}</span>
+          <span class="history-loc">${safeLocation}${participantsInfo}</span>
           <span class="history-date">${dateStr}${detailIcon}</span>
         </div>
         <div class="history-awards-inline">${awardStr}</div>
@@ -701,7 +700,7 @@
     document.getElementById('historyList').innerHTML = html;
   }
   
-  /* ═══════════════════════ 📜 매치 상세 모달 ═══════════════════════ */
+  /* ═══════════════════════ 매치 상세 모달 ═══════════════════════ */
   async function buildTeamsFromEntries(match) {
     if (!match || !match.gameId) return [];
     try {
@@ -844,7 +843,7 @@
           <div class="detail-modal-content" onclick="event.stopPropagation()">
             <div class="detail-modal-header">
               <div>
-                <div class="detail-modal-title">🏟️ ${safeLocation}</div>
+                <div class="detail-modal-title">${safeLocation}</div>
                 <div class="detail-modal-date">${dateStr} · ${totalParticipants}명 참가</div>
               </div>
               <div style="display: flex; gap: 6px; align-items: center;">
@@ -887,7 +886,7 @@
     }
   }
   
-  /* ═══════════════════════ 📱 공유 카드 생성 ═══════════════════════ */
+  /* ═══════════════════════ 공유 카드 생성 ═══════════════════════ */
   async function openShareCardFromDetail(idx) {
     const match = currentHistoryData[idx] || globalHistoryData[idx];
     if (!match) return;
@@ -943,7 +942,7 @@
     
     const winHtml = match.winTeam ? `
       <div style="background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3); border-radius: 12px; padding: 12px; margin-top: 14px; text-align: center;">
-        <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; margin-bottom: 4px; font-weight: 900;">🏆 CHAMPIONS</div>
+        <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; margin-bottom: 4px; font-weight: 900;">CHAMPIONS</div>
         <div style="font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 1px;">${safeWin}</div>
       </div>` : '';
     
@@ -951,7 +950,7 @@
       <div class="share-modal-overlay" onclick="closeShareModal(event)">
         <div class="share-modal-content" onclick="event.stopPropagation()">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div style="font-size: 15px; font-weight: 900; color: var(--green);">📱 결과 카드 공유</div>
+            <div style="font-size: 15px; font-weight: 900; color: var(--green);">결과 카드 공유</div>
             <button onclick="closeShareModal()" style="background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px;">
               <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
@@ -973,7 +972,7 @@
               </div>
               
               <div style="text-align: center; padding: 10px 0 14px; border-bottom: 1px dashed rgba(255,255,255,0.15);">
-                <div style="font-size: 11px; color: rgba(255,255,255,0.55); margin-bottom: 2px;">🏟 ${safeLocation}</div>
+                <div style="font-size: 11px; color: rgba(255,255,255,0.55); margin-bottom: 2px;">${safeLocation}</div>
                 <div style="font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #fff;">${dateStr}</div>
               </div>
               
@@ -989,7 +988,7 @@
           </div>
           
           <button id="shareDownloadBtn" onclick="downloadShareCard('${dateStr.replace(/\./g, '-')}')" style="width: 100%; margin-top: 16px; padding: 12px; background: var(--green); color: #000; border: none; border-radius: 10px; font-weight: 900; font-size: 14px; cursor: pointer;">
-            📱 이미지 저장/공유
+            이미지 저장/공유
           </button>
         </div>
       </div>
@@ -1247,7 +1246,7 @@
     if (data.mvpName) {
       mvpHtml = `
         <div style="background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.35); border-radius: 12px; padding: 14px; margin-top: 12px;">
-          <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; font-weight: 900; margin-bottom: 8px; text-align: center;">👑 MVP OF THE MONTH</div>
+          <div style="font-size: 10px; color: #FFD700; letter-spacing: 2px; font-weight: 900; margin-bottom: 8px; text-align: center;">MVP OF THE MONTH</div>
           <div style="display: flex; align-items: center; gap: 12px;">
             <div style="width: 50px; height: 50px; border-radius: 50%; background: #051008; border: 2px solid #FFD700; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;">
               <img src="${safeMvpPhoto}" crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='./sublogo2.png';">
@@ -1277,7 +1276,7 @@
       });
       top3Html = `
         <div style="margin-top: 12px;">
-          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">🏅 시상 TOP 3 (MOM)</div>
+          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">시상 TOP 3 (MOM)</div>
           <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px 12px;">${rows}</div>
         </div>
       `;
@@ -1289,7 +1288,7 @@
       const safeNames = data.fullAttendance.map(n => escapeHtml(n)).join(', ');
       attendanceHtml = `
         <div style="margin-top: 12px;">
-          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">⭐ 개근상 (전 경기 참석)</div>
+          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">개근상 (전 경기 참석)</div>
           <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #fff; line-height: 1.5;">${safeNames}</div>
         </div>
       `;
@@ -1301,7 +1300,7 @@
       const safeNames = data.newMembers.map(n => escapeHtml(n)).join(', ');
       newMemberHtml = `
         <div style="margin-top: 12px;">
-          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">🆕 신규 가입</div>
+          <div style="font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px;">신규 가입</div>
           <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #fff;">${safeNames}</div>
         </div>
       `;
@@ -1351,7 +1350,7 @@
       </div>
       
       <button onclick="downloadMonthlyReport('${data.year}-${String(data.month).padStart(2,'0')}')" id="monthlyReportShareBtn" style="width: 100%; margin-top: 16px; padding: 12px; background: var(--green); color: #000; border: none; border-radius: 10px; font-weight: 900; font-size: 14px; cursor: pointer;">
-        📱 이미지 저장/공유
+        이미지 저장/공유
       </button>
     `;
     container.innerHTML = cardHtml;
@@ -1423,7 +1422,7 @@
     }
   }
 
-  /* ═══════════════════════ ✏️ 매치 기록 수정 ═══════════════════════ */
+  /* ═══════════════════════ 매치 기록 수정 ═══════════════════════ */
   
   let _editingMatchIdx = null;
   let _editingMatchData = null;
@@ -1498,15 +1497,15 @@
     const modalHtml = `
       <div class="edit-modal-content" onclick="event.stopPropagation()">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <div style="font-size: 15px; font-weight: 900; color: #FFA502;">✏️ 매치 기록 수정</div>
+          <div style="font-size: 15px; font-weight: 900; color: #FFA502;">매치 기록 수정</div>
           <button onclick="closeEditAwardsModal()" style="background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 4px;">
             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
-        <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">🏟 ${escapeHtml(match.location || '상무풋살')} · ${dateStr}</div>
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">${escapeHtml(match.location || '상무풋살')} · ${dateStr}</div>
         
         <div class="edit-field">
-          <div class="edit-field-label" style="color: #FFD700;">🏆 우승팀</div>
+          <div class="edit-field-label" style="color: #FFD700;">우승팀</div>
           <select id="editWinTeam">${teamOptions}</select>
         </div>
         

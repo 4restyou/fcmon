@@ -74,9 +74,8 @@
 <body class="has-tabbar">
 
 <div class="container">
-  <div class="header">
-    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img" loading="eager">
-    <div class="back-btn" onclick="goBack()">←</div>
+  <div class="page-head">
+    <div><div class="page-title">출석률</div><div class="page-sub">누적 매치 기준 참석 통계</div></div>
   </div>
 
   <div class="summary-card">
@@ -85,7 +84,7 @@
   </div>
 
   <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">전체 선수 출석률 순위
-    <button onclick="exportAttendanceCsv()" style="background:transparent; border:1px solid var(--border); color:var(--muted2); padding:5px 10px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; -webkit-appearance:none;">CSV 내보내기</button>
+    <button class="btn-ghost" onclick="exportAttendanceCsv()">CSV</button>
   </div>
 
   <div id="attSkeleton">
@@ -100,11 +99,11 @@
 
 <div id="popupOverlay">
   <div class="popup-box">
-    <div style="font-size:28px; margin-bottom:12px;">📢</div>
+    <div style="font-size:28px; margin-bottom:12px;">공지</div>
     <div style="font-size:16px; font-weight:900; color:var(--green); margin-bottom:16px;">공지사항</div>
     <div id="popupContent" style="font-size:14px; color:var(--text); line-height:1.8; white-space:pre-wrap; margin-bottom:8px; max-height:300px; overflow-y:auto; text-align:left; padding:16px; background:var(--bg3); border-radius:12px; border:1px solid var(--border);"></div>
     <div id="popupExpire" style="font-size:11px; color:var(--muted); margin:12px 0 20px;"></div>
-    <button onclick="dismissPopup()" style="width:100%; height:50px; background:var(--green); color:#000; border:none; border-radius:12px; font-weight:900; font-size:15px; cursor:pointer;">✅ 확인했습니다</button>
+    <button onclick="dismissPopup()" style="width:100%; height:50px; background:var(--green); color:#000; border:none; border-radius:12px; font-weight:900; font-size:15px; cursor:pointer;">확인했습니다</button>
   </div>
 </div>
 
@@ -495,7 +494,7 @@
     }
   }
   
-  /* ✅ showConfirm - Promise<boolean> */
+  /* showConfirm - Promise<boolean> */
   window.showConfirm = function(message, opts) {
     opts = opts || {};
     const ov = ensureDialogOverlay();

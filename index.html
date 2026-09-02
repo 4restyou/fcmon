@@ -302,7 +302,7 @@
 <body class="has-tabbar">
 <div class="container">
   <div class="header">
-    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img">
+    <img src="./mainlogo.png" alt="FCMON" class="top-logo-img">
     <div style="display:flex;align-items:center;gap:2px;">
       <button class="btn-install-icon" onclick="openInstallGuide()" aria-label="제작자 정보">
         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -942,7 +942,7 @@
     }
   }
 
-  /* ═══════════ 🗂 삭제된 매치 복원 (마스터 전용) ═══════════
+  /* ═══════════ 삭제된 매치 복원 (마스터 전용) ═══════════
      삭제는 물리 삭제가 아닌 숨김 처리(deletedAt 필드)이므로,
      해당 필드만 제거하면 참가자 명단까지 그대로 복원된다. */
   let globalAllMatches = [];
@@ -1193,7 +1193,7 @@
       
       const snap = await query.limit(limit).get();
       if (snap.empty) { 
-        console.log("%c📝 " + title + ": 기록 없음", "color: #888; font-size: 14px;"); 
+        console.log("%c" + title + ": 기록 없음", "color: #888; font-size: 14px;"); 
         return; 
       }
       console.log("%c🕵️ " + title + " (" + snap.size + "건)", "color: #00E676; font-size: 16px; font-weight: bold;");
@@ -1468,7 +1468,7 @@
     return new Promise(function(resolve){ dialogResolver = resolve; });
   };
   
-  /* 📝 showPrompt - Promise<string|null> */
+  /* showPrompt - Promise<string|null> */
   window.showPrompt = function(message, opts) {
     opts = opts || {};
     const ov = ensureDialogOverlay();
@@ -1531,7 +1531,7 @@
 
 <!--
 ════════════════════════════════════════════════════════════════════
-🔄 FCMON Undo 토스트 확장 v1.0
+FCMON Undo 토스트 확장 v1.0
 _dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
 
 사용 예:
@@ -1601,7 +1601,7 @@ _dialogs.html의 기본 토스트 시스템을 확장하여 Undo 기능 추가
 
 <script>
 (function(){
-  /* 🔄 showUndoToast - 실행 취소 가능한 토스트 */
+  /* showUndoToast - 실행 취소 가능한 토스트 */
   /* 반환값: { commit: () => void, cancel: () => void } */
   /*   commit(): 즉시 완료(토스트 닫고 완료 콜백 실행 안 함) */
   /*   cancel(): 되돌리기 동작 (토스트 닫고 onUndo 콜백 실행) */

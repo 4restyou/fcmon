@@ -35,7 +35,7 @@
 
     .tabs{display:flex;gap:8px;margin-bottom:22px;background:var(--bg3);padding:5px;border-radius:14px;border:1px solid var(--border)}
     .tab-btn{flex:1;padding:13px 0;border-radius:10px;font-size:13px;font-weight:900;background:transparent;color:var(--muted);border:none;cursor:pointer;transition:.2s;letter-spacing:.3px}
-    .tab-btn.active{background:var(--green);color:#000;box-shadow:0 4px 12px rgba(0,230,118,0.2)}
+    .tab-btn.active{background:var(--green-dim);color:var(--green);border:1px solid rgba(44,224,128,0.3)}
     .view-section{display:none;animation:fadeIn .28s ease}
     .view-section.show{display:block}
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -171,9 +171,8 @@
 </head>
 <body class="has-tabbar">
 <div class="container">
-  <div class="header">
-    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img" loading="eager">
-    <div class="back-btn" onclick="goBack()">←</div>
+  <div class="page-head">
+    <div><div class="page-title">프로필</div><div class="page-sub">내 기록 조회 · 선수 등록</div></div>
   </div>
 
   <div class="tabs">
@@ -222,7 +221,7 @@
         </div>
         <div class="radar-wrap"><canvas id="radarChart"></canvas></div>
         <div class="trophy-box">
-          <div class="t-title">🏆 시즌 수상 기록</div>
+          <div class="t-title">시즌 수상 기록</div>
           <div class="t-row"><span>🥇 최우수 선수 (MOM)</span><strong id="tMom">0회</strong></div>
           <div class="t-row"><span>🥈 매치 2위</span><strong id="tSec" style="color:silver">0회</strong></div>
           <div class="t-row"><span>🥉 매치 3위</span><strong id="tThird" style="color:#CD7F32">0회</strong></div>
@@ -256,29 +255,29 @@
     <div class="reg-card">
       <input type="file" id="photoInput" accept="image/*" onchange="previewPhoto(this)" style="display:none">
       <div class="photo-upload">
-        <div class="photo-preview" id="photoPreview" onclick="document.getElementById('photoInput').click()">📷</div>
+        <div class="photo-preview" id="photoPreview" onclick="document.getElementById('photoInput').click()">사진 추가</div>
         <div style="font-size:12px;color:var(--muted2)"><strong style="color:var(--green)">프로필 사진</strong><br>탭해서 업로드</div>
       </div>
 
       <div class="form-group">
         <label class="form-label">주 포지션</label>
         <div class="pos-row">
-          <button class="pos-btn" id="pos-FW" onclick="setPos('FW')">⚡ FW</button>
-          <button class="pos-btn active-MF" id="pos-MF" onclick="setPos('MF')">🎯 MF</button>
-          <button class="pos-btn" id="pos-DF" onclick="setPos('DF')">🛡 DF</button>
-          <button class="pos-btn" id="pos-GK" onclick="setPos('GK')">🧤 GK</button>
+          <button class="pos-btn" id="pos-FW" onclick="setPos('FW')">FW</button>
+          <button class="pos-btn active-MF" id="pos-MF" onclick="setPos('MF')">MF</button>
+          <button class="pos-btn" id="pos-DF" onclick="setPos('DF')">DF</button>
+          <button class="pos-btn" id="pos-GK" onclick="setPos('GK')">GK</button>
         </div>
       </div>
 
       <!-- 연락 정보 (선택 입력, 매니저 명부 관리용) -->
       <div class="form-group">
-        <label class="form-label">📱 연락처 (선택)</label>
+        <label class="form-label">연락처 (선택)</label>
         <input type="tel" id="r_contact" class="form-input" placeholder="010-1234-5678" maxlength="20" autocomplete="tel">
         <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5;">매니저 명부 관리용으로만 사용됩니다 · 다른 회원에게는 공개되지 않음</div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">📷 Instagram (선택)</label>
+        <label class="form-label">Instagram (선택)</label>
         <input type="text" id="r_instagram" class="form-input" placeholder="인스타그램 아이디 (@ 없이)" maxlength="50" autocomplete="username">
       </div>
 
@@ -308,7 +307,7 @@
       </div>
     </div>
 
-    <button class="btn-green" id="regSubmitBtn" onclick="submitReg()">📝 등록 / 수정하기</button>
+    <button class="btn-green" id="regSubmitBtn" onclick="submitReg()">등록 / 수정하기</button>
   </div>
 </div>
 
@@ -318,7 +317,7 @@
     <div style="font-size:15px;font-weight:900;color:var(--green);margin-bottom:14px">공지사항</div>
     <div id="popupContent" style="font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;text-align:left;padding:14px;background:var(--bg3);border-radius:11px;border:1px solid var(--border);max-height:240px;overflow-y:auto;margin-bottom:8px"></div>
     <div id="popupExpire" style="font-size:11px;color:var(--muted);margin:10px 0 18px"></div>
-    <button onclick="dismissPopup()" style="width:100%;height:48px;background:var(--green);color:#000;border:none;border-radius:12px;font-weight:900;font-size:14px;cursor:pointer">✅ 확인했습니다</button>
+    <button onclick="dismissPopup()" style="width:100%;height:48px;background:var(--green);color:#000;border:none;border-radius:12px;font-weight:900;font-size:14px;cursor:pointer">확인했습니다</button>
   </div>
 </div>
 
@@ -853,15 +852,15 @@
           window._profileCache = matchedUser;
           window._profileLoadedByMaster = isMaster;
           fillRegForm(matchedUser, pw);
-          showLoadStatus('success', '✅ 기존 정보를 불러왔습니다. 수정 후 저장하세요.');
+          showLoadStatus('success', '기존 정보를 불러왔습니다. 수정 후 저장하세요.');
         } else {
           window._profileLoadedByMaster = false;
-          showLoadStatus('new', '⚠️ 비밀번호가 일치하지 않습니다.');
+          showLoadStatus('new', '비밀번호가 일치하지 않습니다.');
         }
       }
     }).catch(err => {
       setButtonLoading(btn, false);
-      showLoadStatus('new', '⚠️ DB 연결 오류가 발생했습니다.');
+      showLoadStatus('new', 'DB 연결 오류가 발생했습니다.');
     });
   }
 
@@ -1084,7 +1083,7 @@
           } catch (photoErr) {
             // 사진 업로드 실패해도 선수 등록은 성공 상태로 마무리
             console.warn('사진 업로드 실패 (선수 등록은 성공):', photoErr);
-            showToast('⚠️ 선수 등록은 완료되었지만 사진 업로드에 실패했습니다. 다시 시도해주세요.', 'warning');
+            showToast('선수 등록은 완료되었지만 사진 업로드에 실패했습니다. 다시 시도해주세요.', 'warning');
           }
         }
         
@@ -1361,7 +1360,7 @@
     }
   }
   
-  /* ✅ showConfirm - Promise<boolean> */
+  /* showConfirm - Promise<boolean> */
   window.showConfirm = function(message, opts) {
     opts = opts || {};
     const ov = ensureDialogOverlay();

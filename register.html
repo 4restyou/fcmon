@@ -122,14 +122,14 @@
     
     .form-tabs { display:flex; background:var(--bg3); border-radius:12px; padding:4px; margin-bottom:16px; border:1px solid var(--border); }
     .form-tab-btn { flex:1; text-align:center; padding:10px 0; font-size:13px; font-weight:700; color:var(--muted); border-radius:8px; cursor:pointer; transition:0.2s; }
-    .form-tab-btn.active { background:var(--green); color:#000; box-shadow:0 2px 8px rgba(0,230,118,0.2); }
+    .form-tab-btn.active { background:var(--green-dim); color:var(--green); border:1px solid rgba(44,224,128,0.3); }
 
     .form-group{margin-bottom:12px}
     .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:15px;outline:none;-webkit-appearance:none;}
     select.form-input { appearance: none; -webkit-appearance: none; }
     .btn-modal-submit{width:100%;height:54px;background:var(--green);color:#000;border:none;border-radius:14px;font-weight:900;font-size:15px;cursor:pointer;margin-top:8px; transition:0.2s; -webkit-appearance:none;}
     .btn-modal-submit:active{transform:scale(0.98);}
-    .btn-modal-submit.guest-mode { background: linear-gradient(135deg, #40C4FF, #0091EA); box-shadow: 0 4px 15px rgba(64,196,255,0.3); color:#fff; }
+    .btn-modal-submit.guest-mode { background: var(--blue); color:#08131A; }
 
     .chart-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
     .chart-modal-bg.show { display: flex; opacity: 1; }
@@ -245,7 +245,7 @@
 
 <div class="container" id="mainContainer">
   <div class="header">
-    <img src="https://lh3.googleusercontent.com/d/1m60UPaw3LHihn8mevOXkost1w0CW67wX" alt="FCMON" class="top-logo-img">
+    <img src="./mainlogo.png" alt="FCMON" class="top-logo-img">
     <button class="back-btn" onclick="goBack()">
       <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
     </button>
@@ -661,7 +661,7 @@
   let currentTab = 'member'; 
   let currentPlayerForModal = null;
   
-  // 👕 유니폼 관리 (선수도 팀별 유니폼 정보 확인 가능)
+  // 유니폼 관리 (선수도 팀별 유니폼 정보 확인 가능)
   let globalJerseyList = []; // settings/jerseys의 list
   let globalTeamJerseys = {}; // matches/{gameId}.teamJerseys
   
@@ -733,7 +733,7 @@
     db.collection("matches").doc(GAME_ID).collection("entries").orderBy("addedAt", "asc").onSnapshot((snapshot) => { globalEntries = []; snapshot.forEach((doc) => { const entry = doc.data(); entry._id = doc.id; if (isActiveEntry(entry)) globalEntries.push(entry); }); document.getElementById('totalCount').innerText = globalEntries.length + '명'; processRoster(); _entriesLoaded = true; maybeAutoOpenApply(); }, (err) => { console.error('[entries onSnapshot]', err); showToast('참가 명단을 불러오지 못했습니다.', 'error'); });
   }
   
-  /* 👕 유니폼 마스터 목록 실시간 구독 */
+  /* 유니폼 마스터 목록 실시간 구독 */
   function loadJerseysRealtime() {
     db.collection("settings").doc("jerseys").onSnapshot((doc) => {
       if (doc.exists && doc.data().list && Array.isArray(doc.data().list)) {
@@ -959,7 +959,7 @@
         if (!userDoc.exists) {
           // 세션은 있는데 DB에서 삭제된 유저 → 세션 클리어 후 수동 로그인으로
           window.clearAutoLoginSession();
-          showToast('❌ 계정을 찾을 수 없습니다. 다시 로그인해주세요.', 'error');
+          showToast('계정을 찾을 수 없습니다. 다시 로그인해주세요.', 'error');
           switchToManualLogin();
           resetBtn();
           return;
@@ -975,7 +975,7 @@
         }
         executeRegistration(entryRef, { userId: userId, name: userData.name, teamLabel: '미정', pos: userData.pos || 'MF', ovr: userData.ovr || 50, stats: userData.stats || [50,50,50,50,50,50,50,50], photoUrl: userData.photoUrl || '', addedAt: firebase.firestore.FieldValue.serverTimestamp() });
       } catch (err) {
-        showToast('❌ DB 통신 오류: ' + err.message, 'error'); 
+        showToast('DB 통신 오류: ' + err.message, 'error'); 
         resetBtn();
       }
       return;
@@ -987,7 +987,7 @@
     if (!name || !pw) { 
       isSubmitting = false;
       setButtonLoading(btn, false);
-      return showToast('⚠️ 이름과 비밀번호를 모두 입력하세요.', 'warning'); 
+      return showToast('이름과 비밀번호를 모두 입력하세요.', 'warning'); 
     }
     
     // "로그인 유지" 체크박스 상태
@@ -998,7 +998,7 @@
     const isMaster = await verifyMasterPw(pw);
 
     db.collection("users").where("name", "==", name).get().then(async (querySnapshot) => {
-      if (querySnapshot.empty) { showToast('❌ 등록되지 않은 이름입니다. 선수 등록을 해주세요!', 'error'); resetBtn(); return; }
+      if (querySnapshot.empty) { showToast('등록되지 않은 이름입니다. 선수 등록을 해주세요!', 'error'); resetBtn(); return; }
       let userData = null; let userId = null; let userRef = null; let shouldMigrateUserPw = false;
       for (const doc of querySnapshot.docs) {
         const data = doc.data();
@@ -1012,7 +1012,7 @@
           shouldMigrateUserPw = userPwOk && !data.passwordHash;
         }
       }
-      if (!userData) { showToast('❌ 비밀번호가 일치하지 않습니다.', 'error'); resetBtn(); return; }
+      if (!userData) { showToast('비밀번호가 일치하지 않습니다.', 'error'); resetBtn(); return; }
       if (shouldMigrateUserPw) await migrateUserPwIfLegacy(userRef, pw, userData);
       
       // 로그인 성공 + "유지" 체크되어 있으면 세션 저장
@@ -1029,7 +1029,7 @@
         }
         executeRegistration(entryRef, { userId: userId, name: userData.name, teamLabel: '미정', pos: userData.pos || 'MF', ovr: userData.ovr || 50, stats: userData.stats || [50,50,50,50,50,50,50,50], photoUrl: userData.photoUrl || '', addedAt: firebase.firestore.FieldValue.serverTimestamp() });
       });
-    }).catch((err) => { showToast('❌ DB 통신 오류: ' + err.message, 'error'); resetBtn(); });
+    }).catch((err) => { showToast('DB 통신 오류: ' + err.message, 'error'); resetBtn(); });
   }
   
   /* ════════ 자동 로그인 UI 제어 ════════ */
@@ -1069,7 +1069,7 @@
     document.getElementById('playerName').focus();
   }
 
-  /* ═══════════ 🎽 용병 신청 ═══════════
+  /* ═══════════ 용병 신청 ═══════════
      용병은 users 컬렉션에 memberType:'guest' 로 1회만 등록된다.
      - 처음: 이름/비번/포지션/OVR로 용병 계정 생성 후 참가
      - 재방문: 이름+비번만으로 저장된 정보를 그대로 사용해 참가
@@ -1080,8 +1080,8 @@
     const pw = document.getElementById('g_pw').value.trim();
     const pos = document.getElementById('g_pos').value;
     const inputOvr = Math.min(99, Math.max(1, Number(document.getElementById('g_ovr').value) || 50));
-    if (!name || !pw) return showToast('⚠️ 이름과 비밀번호를 모두 입력하세요.', 'warning');
-    if (!/^[0-9]{4}$/.test(pw)) return showToast('⚠️ 비밀번호는 숫자 4자리로 입력하세요.', 'warning');
+    if (!name || !pw) return showToast('이름과 비밀번호를 모두 입력하세요.', 'warning');
+    if (!/^[0-9]{4}$/.test(pw)) return showToast('비밀번호는 숫자 4자리로 입력하세요.', 'warning');
 
     isSubmitting = true;
     const btn = document.getElementById('submitBtn');
@@ -1099,7 +1099,7 @@
         // 2) 기존 용병 → 동명이인이 있어도 비밀번호가 맞는 계정을 고른다
         let matched = null;
         for (const doc of guestDocs) { if (await verifyUserPw(pw, doc.data(), doc.id)) { matched = doc; break; } }
-        if (!matched) { showToast('❌ 비밀번호가 일치하지 않습니다.', 'error'); resetBtn(); return; }
+        if (!matched) { showToast('비밀번호가 일치하지 않습니다.', 'error'); resetBtn(); return; }
         await migrateUserPwIfLegacy(matched.ref, pw, matched.data());
         guestId = matched.id;
         guestData = matched.data();
@@ -1137,7 +1137,7 @@
         photoUrl: guestData.photoUrl || '', isGuest: true,
         addedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-    })().catch((err) => { showToast('❌ 오류: ' + err.message, 'error'); resetBtn(); });
+    })().catch((err) => { showToast('오류: ' + err.message, 'error'); resetBtn(); });
   }
 
   function executeRegistration(ref, data) { 
@@ -1158,7 +1158,7 @@
       document.getElementById('mainContent').style.display = 'none';
       toggleApplyBar(false);
       document.getElementById('successScreen').style.display = 'block';
-    }).catch((err) => { showToast('❌ 등록 오류: ' + err.message, 'error'); resetBtn(); }); 
+    }).catch((err) => { showToast('등록 오류: ' + err.message, 'error'); resetBtn(); }); 
   }
 
   function cancelEntryWithCount(ref, canceledBy) {
@@ -1206,12 +1206,12 @@
           await restoreEntryWithCount(db.collection("matches").doc(GAME_ID).collection("entries").doc(savedEntryId), savedEntry);
           showToast('참가 신청이 복원되었습니다', 'success');
         } catch (err) {
-          showToast('❌ 복원 실패: ' + err.message, 'error');
+          showToast('복원 실패: ' + err.message, 'error');
         }
       }, { duration: 5000, label: '되돌리기' });
       
     } catch (err) { 
-      showToast('❌ 취소 오류: ' + err.message, 'error'); 
+      showToast('취소 오류: ' + err.message, 'error'); 
       resetBtn(); 
     }
   }
@@ -1264,11 +1264,11 @@
       await db.collection("matches").doc(GAME_ID).collection("entries").doc(p.userId).update({ note: note });
       p.note = note;
       renderRosterUI();
-      showToast(note ? '✅ 한마디 저장됨' : '✅ 한마디 삭제됨', 'success');
+      showToast(note ? '한마디 저장됨' : '한마디 삭제됨', 'success');
       if (input) input.blur();
       setTimeout(() => closePlayerStatModal(), 600);
     } catch (err) {
-      showToast('❌ 저장 실패: ' + err.message, 'error');
+      showToast('저장 실패: ' + err.message, 'error');
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '저장'; }
     }
@@ -1363,7 +1363,7 @@
     }
 
     if(!isAuth) {
-        return showToast('❌ 비밀번호가 일치하지 않습니다.', 'error');
+        return showToast('비밀번호가 일치하지 않습니다.', 'error');
     }
 
     const btn = document.getElementById('btnCancelEntry');
@@ -1382,12 +1382,12 @@
           await restoreEntryWithCount(db.collection("matches").doc(GAME_ID).collection("entries").doc(savedEntryId), savedEntry);
           showToast('참가 신청이 복원되었습니다', 'success');
         } catch (err) {
-          showToast('❌ 복원 실패: ' + err.message, 'error');
+          showToast('복원 실패: ' + err.message, 'error');
         }
       }, { duration: 5000, label: '되돌리기' });
       
     } catch (err) {
-      showToast('❌ 취소 오류: ' + err.message, 'error'); 
+      showToast('취소 오류: ' + err.message, 'error'); 
       setButtonLoading(btn, false);
       btn.textContent = '참가 취소하기';
     }
@@ -1407,7 +1407,7 @@
       if (!isMaster && isMatchManager) await migrateMatchAdminPwIfLegacy(pw, globalMatchData);
       window.location.href = 'admin.html?gameId=' + GAME_ID;
     } else {
-      showToast('❌ 권한이 없습니다.', 'error');
+      showToast('권한이 없습니다.', 'error');
     }
   }
   
@@ -1640,7 +1640,7 @@
     }
   }
   
-  /* ✅ showConfirm - Promise<boolean> */
+  /* showConfirm - Promise<boolean> */
   window.showConfirm = function(message, opts) {
     opts = opts || {};
     const ov = ensureDialogOverlay();
