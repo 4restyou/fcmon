@@ -392,7 +392,7 @@
         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
-    <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px;">삭제된 매치는 목록에서 숨겨질 뿐 데이터(참가자 명단 포함)는 보존됩니다. <b>복원</b>하면 그대로 목록에 다시 나타나고, <b style="color:var(--red);">영구삭제</b>하면 참가자 명단까지 완전히 제거되어 되돌릴 수 없습니다.</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px;">삭제된 매치는 목록에서 숨겨질 뿐 데이터(참가자 명단 포함)는 보존됩니다. <b>복원</b>하면 그대로 목록에 다시 나타나고, <b style="color:var(--red);">영구삭제</b>하면 참가자 명단까지 완전히 제거되어 되돌릴 수 없습니다. 종료된 매치의 경기 기록(랭킹 반영분)은 삭제되지 않고 유지됩니다.</div>
     <div id="restoreList"></div>
   </div>
 </div>
@@ -979,7 +979,7 @@
     if (!m) { showToast('대상 매치를 찾을 수 없습니다.', 'error'); return; }
     const dateStr = m.dateTime ? new Date(m.dateTime).toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
     const ok1 = await showConfirm(
-      '"' + (m.location || '') + '" (' + dateStr + ') 매치를 영구 삭제하시겠습니까?\n\n참가자 명단까지 완전히 제거되며 되돌릴 수 없습니다.',
+      '"' + (m.location || '') + '" (' + dateStr + ') 매치를 영구 삭제하시겠습니까?\n\n참가자 명단까지 완전히 제거되며 되돌릴 수 없습니다.\n(이미 종료된 매치의 경기 기록·랭킹 반영분은 유지됩니다)',
       { title: '⚠️ 영구 삭제', danger: true, confirmText: '계속' }
     );
     if (!ok1) return;

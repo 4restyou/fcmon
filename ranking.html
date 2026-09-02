@@ -303,6 +303,7 @@
   let currentHistoryData = [];
   let globalRankedPlayers = [];
   let globalUsersByName = {};
+  let globalGuestNames = new Set(); // 용병 이름 (기간별 랭킹 제외용)
   let currentHistoryPage = 1;
   let currentTab = 'ranking';
   let selectedPeriodMode = 'month';
@@ -494,7 +495,7 @@
           const data = doc.data();
           // 탈퇴 회원 제외
           if (data.status === 'retired') return;
-          if (data.memberType === 'guest') return; // 용병은 회원 랭킹에서 제외
+          if (data.memberType === 'guest') { if (data.name) globalGuestNames.add(data.name); return; } // 용병은 회원 랭킹에서 제외
           const user = { id: doc.id, ...data };
           globalRankedPlayers.push(user);
           if (user.name) globalUsersByName[user.name] = user;
@@ -519,6 +520,8 @@
     const scores = {};
     function ensure(name, match) {
       if (!name) return null;
+      // 용병(계정 기준 + 구버전 '(용병)' 접미사)은 기간별 랭킹에서도 제외
+      if (globalGuestNames.has(name) || /\((?:용병|게스트)\)\s*$/.test(name)) return null;
       if (!scores[name]) {
         const user = globalUsersByName[name] || getPlayerFromMatch(name, match) || {};
         scores[name] = {

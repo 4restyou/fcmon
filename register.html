@@ -996,17 +996,18 @@
     (async () => {
       // 1) 같은 이름의 기존 용병 계정 조회
       const snap = await db.collection("users").where("name", "==", name).limit(10).get();
-      let guestDoc = null;
-      snap.forEach(doc => { const d = doc.data(); if (d.memberType === 'guest' && d.status !== 'retired') guestDoc = doc; });
+      const guestDocs = [];
+      snap.forEach(doc => { const d = doc.data(); if (d.memberType === 'guest' && d.status !== 'retired') guestDocs.push(doc); });
 
       let guestId, guestData;
-      if (guestDoc) {
-        // 2) 기존 용병 → 비밀번호 확인 후 저장된 정보로 참가
-        const ok = await verifyUserPw(pw, guestDoc.data(), guestDoc.id);
-        if (!ok) { showToast('❌ 비밀번호가 일치하지 않습니다.', 'error'); resetBtn(); return; }
-        await migrateUserPwIfLegacy(guestDoc.ref, pw, guestDoc.data());
-        guestId = guestDoc.id;
-        guestData = guestDoc.data();
+      if (guestDocs.length > 0) {
+        // 2) 기존 용병 → 동명이인이 있어도 비밀번호가 맞는 계정을 고른다
+        let matched = null;
+        for (const doc of guestDocs) { if (await verifyUserPw(pw, doc.data(), doc.id)) { matched = doc; break; } }
+        if (!matched) { showToast('❌ 비밀번호가 일치하지 않습니다.', 'error'); resetBtn(); return; }
+        await migrateUserPwIfLegacy(matched.ref, pw, matched.data());
+        guestId = matched.id;
+        guestData = matched.data();
       } else {
         // 3) 신규 용병 → users에 용병 계정 생성
         const stats = [inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr,inputOvr];
