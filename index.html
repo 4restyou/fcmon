@@ -379,7 +379,45 @@
         <span style="flex:1;">삭제된 매치 복원<br><span style="font-size:11px;font-weight:400;color:var(--muted);">숨겨진 매치 복원 · 영구 삭제</span></span>
         <span style="color:var(--muted);">›</span>
       </button>
+      <button onclick="closeAdminSheet();openRecurringModal();" style="display:flex;align-items:center;gap:12px;width:100%;padding:15px 16px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;-webkit-appearance:none;text-align:left;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+        <span style="flex:1;">반복 매치 자동 개설<br><span style="font-size:11px;font-weight:400;color:var(--muted);">매주 정해진 요일·시간에 매치 자동 생성</span></span>
+        <span style="color:var(--muted);">›</span>
+      </button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="recurringModal">
+  <div class="modal-content">
+    <div class="modal-pill"></div>
+    <div class="modal-header">
+      <div class="modal-title">반복 매치 자동 개설</div>
+      <button class="modal-close" onclick="closeRecurringModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:14px;">켜두면 누군가 앱을 열 때 다음 매치가 아직 없으면 자동으로 개설합니다. 같은 일시에 직접 만든 매치가 있으면 건너뜁니다.</div>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer;">
+      <input type="checkbox" id="rc_enabled" style="width:18px;height:18px;accent-color:var(--green);">
+      <span style="font-size:14px;font-weight:700;">자동 개설 켜기</span>
+    </label>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">요일</label>
+        <select id="rc_weekday" class="form-input" style="color:var(--text)"><option value="1">월요일</option><option value="2">화요일</option><option value="3">수요일</option><option value="4">목요일</option><option value="5">금요일</option><option value="6">토요일</option><option value="0">일요일</option></select></div>
+      <div class="form-group"><label class="form-label">시간</label><input type="time" id="rc_time" class="form-input" value="21:00"></div>
+    </div>
+    <div class="form-group"><label class="form-label">구장 이름</label><input type="text" id="rc_loc" class="form-input" placeholder="구장 이름 입력"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">팀당 인원</label><input type="number" id="rc_per" class="form-input" value="6"></div>
+      <div class="form-group"><label class="form-label">총 팀 수</label><input type="number" id="rc_total" class="form-input" value="3"></div>
+    </div>
+    <div class="form-group"><label class="form-label">며칠 전에 개설할까요?</label>
+      <select id="rc_lead" class="form-input" style="color:var(--text)"><option value="3">3일 전</option><option value="5">5일 전</option><option value="7" selected>7일 전</option><option value="14">14일 전</option></select></div>
+    <div class="form-group"><label class="form-label">매치 매니저 비밀번호</label><input type="password" id="rc_adminpw" class="form-input" inputmode="numeric" maxlength="4" placeholder="자동 개설 매치에 쓸 4자리 (비우면 기존 유지)"></div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
+    <div class="form-group"><label class="form-label">마스터 비밀번호</label><input type="password" id="rc_masterpw" class="form-input" inputmode="numeric" maxlength="4" placeholder="저장 확인용" onkeypress="if(event.key==='Enter') { saveRecurring(); }"></div>
+    <button class="btn-modal-submit" id="rcSaveBtn" onclick="saveRecurring()">설정 저장</button>
   </div>
 </div>
 
@@ -591,7 +629,7 @@
   /* ═════════════════════════════════════════════════════════════════════════════ */
 
   window.onload = function() {
-    loadMatchesRealtime(); setDefaultDate(); loadSettingsRealtime();
+    loadMatchesRealtime(); setDefaultDate(); loadSettingsRealtime(); runRecurringSchedule();
   };
   
   function toggleFab(e) { if(e) e.stopPropagation(); document.getElementById('fabWrapper').classList.toggle('open'); }
@@ -1019,6 +1057,90 @@
     } catch (err) {
       showToast('영구 삭제 실패: ' + err.message, 'error');
     }
+  }
+
+  /* ═══════════ 🔁 반복 매치 자동 개설 (settings/recurring) ═══════════ */
+  let _rcHasAdminHash = false;
+  async function openRecurringModal() {
+    try {
+      const doc = await db.collection("settings").doc("recurring").get();
+      const c = doc.exists ? doc.data() : {};
+      _rcHasAdminHash = !!c.adminPwHash;
+      document.getElementById('rc_enabled').checked = !!c.enabled;
+      document.getElementById('rc_weekday').value = String(c.weekday == null ? 1 : c.weekday);
+      document.getElementById('rc_time').value = c.time || '21:00';
+      document.getElementById('rc_loc').value = c.location || '';
+      document.getElementById('rc_per').value = c.perTeam || 6;
+      document.getElementById('rc_total').value = c.totalTeams || 3;
+      document.getElementById('rc_lead').value = String(c.leadDays || 7);
+      document.getElementById('rc_adminpw').value = ''; document.getElementById('rc_masterpw').value = '';
+    } catch (e) { showToast('설정을 불러오지 못했습니다: ' + e.message, 'error'); return; }
+    document.getElementById('recurringModal').classList.add('show');
+  }
+  function closeRecurringModal() { document.getElementById('recurringModal').classList.remove('show'); }
+
+  async function saveRecurring() {
+    const btn = document.getElementById('rcSaveBtn');
+    const loc = document.getElementById('rc_loc').value.trim();
+    const apw = document.getElementById('rc_adminpw').value.trim();
+    const mpw = document.getElementById('rc_masterpw').value.trim();
+    if (!loc) return showToast('구장 이름을 입력하세요.', 'warning');
+    if (apw && !/^[0-9]{4}$/.test(apw)) return showToast('매니저 비밀번호는 숫자 4자리입니다.', 'warning');
+    if (!apw && !_rcHasAdminHash) return showToast('처음 설정할 때는 매니저 비밀번호가 필요합니다.', 'warning');
+    setButtonLoading(btn, true, '확인 중...');
+    if (!(await verifyMasterPw(mpw))) { showToast('마스터 비밀번호가 틀렸습니다.', 'error'); setButtonLoading(btn, false); return; }
+    const data = {
+      enabled: document.getElementById('rc_enabled').checked,
+      weekday: Number(document.getElementById('rc_weekday').value),
+      time: document.getElementById('rc_time').value || '21:00',
+      location: loc,
+      perTeam: Math.max(1, Math.min(20, Number(document.getElementById('rc_per').value) || 6)),
+      totalTeams: Math.max(1, Math.min(10, Number(document.getElementById('rc_total').value) || 3)),
+      leadDays: Number(document.getElementById('rc_lead').value) || 7,
+      updatedAt: new Date().toISOString()
+    };
+    if (apw) data.adminPwHash = await makeMatchPwHash(apw);
+    try {
+      await db.collection("settings").doc("recurring").set(data, { merge: true });
+      showToast('반복 매치 설정을 저장했습니다.', 'success');
+      closeRecurringModal();
+      runRecurringSchedule();
+    } catch (e) { showToast('저장 실패: ' + e.message, 'error'); }
+    setButtonLoading(btn, false);
+  }
+
+  /* 앱을 열 때마다: 다음 회차가 개설 시점 안에 들어왔고 아직 없으면 생성.
+     문서 ID를 날짜로 고정해(G-R-YYYYMMDD) 동시에 여러 명이 열어도 중복 생성되지 않는다. */
+  async function runRecurringSchedule() {
+    try {
+      const doc = await db.collection("settings").doc("recurring").get();
+      if (!doc.exists) return;
+      const c = doc.data();
+      if (!c.enabled || !c.adminPwHash || !c.location) return;
+      const [hh, mm] = String(c.time || '21:00').split(':').map(Number);
+      const now = new Date();
+      const next = new Date(now); next.setHours(hh, mm, 0, 0);
+      next.setDate(now.getDate() + ((Number(c.weekday) - now.getDay() + 7) % 7));
+      if (next <= now) next.setDate(next.getDate() + 7);
+      if (next - now > (Number(c.leadDays) || 7) * 86400000) return;
+      const pad = n => String(n).padStart(2, '0');
+      const dateTime = next.getFullYear() + '-' + pad(next.getMonth() + 1) + '-' + pad(next.getDate()) + 'T' + pad(hh) + ':' + pad(mm);
+      const dup = await db.collection("matches").where("dateTime", "==", dateTime).limit(1).get();
+      if (!dup.empty) return; // 같은 일시 매치(수동 개설 포함)가 있으면 건너뜀
+      const ref = db.collection("matches").doc('G-R-' + dateTime.slice(0, 10).replace(/-/g, ''));
+      const created = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (snap.exists) return false;
+        tx.set(ref, {
+          gameId: ref.id, dateTime: dateTime, location: c.location,
+          perTeam: Number(c.perTeam) || 6, totalTeams: Number(c.totalTeams) || 3,
+          status: '모집중', currentCount: 0, adminPw: '0000', adminPwHash: c.adminPwHash,
+          autoCreated: true, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        return true;
+      });
+      if (created) showToast(c.location + ' 매치가 반복 설정에 따라 자동 개설되었습니다.', 'success');
+    } catch (e) { console.warn('[recurring] 자동 개설 건너뜀:', e); }
   }
 
   function openCreateModal() { document.getElementById('createModal').classList.add('show'); }

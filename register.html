@@ -256,6 +256,13 @@
       <div style="color:var(--muted);font-size:13px;text-align:center">매치 정보를 불러오는 중입니다...</div>
     </div>
     
+    <div id="momVoteBox" style="display:none; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px 16px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="min-width:0;"><div style="font-size:14px; font-weight:800;">오늘의 MOM 투표</div><div id="momVoteTallyText" style="font-size:11.5px; color:var(--muted2); margin-top:3px;">아직 투표가 없습니다</div></div>
+        <button id="momVoteBtn" onclick="openMomVote()" style="flex:0 0 auto; height:40px; padding:0 16px; background:var(--green); color:#08130C; border:none; border-radius:12px; font-size:13px; font-weight:900; cursor:pointer; -webkit-appearance:none;">투표하기</button>
+      </div>
+    </div>
+
     <div id="rosterBoard" style="margin-bottom: 30px;">
       <div class="section-label">참여 현황 <span id="totalCount" style="float:right; color:var(--green)">0명</span></div>
       <div style="display:flex; gap:8px; margin: 16px 0;">
@@ -281,6 +288,21 @@
     <button class="apply-side" onclick="openAdminPwModal()" aria-label="매니저 전용">
       <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
     </button>
+  </div>
+</div>
+
+<div class="modal-bg" id="momVoteModal">
+  <div class="modal-content">
+    <div class="modal-pill"></div>
+    <div class="modal-header">
+      <div class="modal-title">MOM 투표</div>
+      <button class="modal-close" onclick="closeMomVote()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">오늘 가장 잘한 선수 한 명을 고르세요. 다시 투표하면 바뀝니다. 매니저가 매치를 종료할 때 참고합니다.</div>
+    <div id="momVoteList" style="max-height:50vh; overflow-y:auto; margin-bottom:12px;"></div>
+    <button class="btn-modal-submit" onclick="submitMomVote()">투표 완료</button>
   </div>
 </div>
 
@@ -708,7 +730,7 @@
       maybeAutoOpenApply();
     }, (err) => { console.error('[match onSnapshot]', err); showToast('매치 정보를 불러오지 못했습니다. 네트워크를 확인해주세요.', 'error'); });
     db.collection("users").onSnapshot((snapshot) => { snapshot.forEach(doc => { globalUsersMap[doc.id] = { id: doc.id, ...doc.data() }; }); processRoster(); }, (err) => { console.error('[users onSnapshot]', err); showToast('회원 정보를 불러오지 못했습니다.', 'error'); });
-    db.collection("matches").doc(GAME_ID).collection("entries").orderBy("addedAt", "asc").onSnapshot((snapshot) => { globalEntries = []; snapshot.forEach((doc) => { const entry = doc.data(); if (isActiveEntry(entry)) globalEntries.push(entry); }); document.getElementById('totalCount').innerText = globalEntries.length + '명'; processRoster(); _entriesLoaded = true; maybeAutoOpenApply(); }, (err) => { console.error('[entries onSnapshot]', err); showToast('참가 명단을 불러오지 못했습니다.', 'error'); });
+    db.collection("matches").doc(GAME_ID).collection("entries").orderBy("addedAt", "asc").onSnapshot((snapshot) => { globalEntries = []; snapshot.forEach((doc) => { const entry = doc.data(); entry._id = doc.id; if (isActiveEntry(entry)) globalEntries.push(entry); }); document.getElementById('totalCount').innerText = globalEntries.length + '명'; processRoster(); _entriesLoaded = true; maybeAutoOpenApply(); }, (err) => { console.error('[entries onSnapshot]', err); showToast('참가 명단을 불러오지 못했습니다.', 'error'); });
   }
   
   /* 👕 유니폼 마스터 목록 실시간 구독 */
@@ -789,6 +811,65 @@
     });
     renderMatchInfoCard(); // ★ 매치 카드 업데이트 (인원 게이지 포함)
     renderRosterUI();
+    renderMomVoteBox();
+  }
+
+  /* ═══════════ 🏅 MOM 회원 투표 (표는 참가자 본인 entry 문서의 momVote 필드에 저장) ═══════════ */
+  function momTally() {
+    const t = {}; globalEntries.forEach(e => { if (e.momVote) t[e.momVote] = (t[e.momVote] || 0) + 1; });
+    return Object.entries(t).sort((a, b) => b[1] - a[1]);
+  }
+  function entryName(userId) { const e = globalEntries.find(x => x.userId === userId); return e ? cleanPlayerName(e.name, isGuestPlayer(e)) : '?'; }
+  function renderMomVoteBox() {
+    const box = document.getElementById('momVoteBox'); if (!box || !globalMatchData) return;
+    const cap = (globalMatchData.perTeam || 0) * (globalMatchData.totalTeams || 0);
+    const st = getMatchStatus(globalMatchData.dateTime, globalEntries.length, cap, globalMatchData.status === '매치종료');
+    const open = (st === 'live' || st === 'done') && globalMatchData.status !== '매치종료' && globalEntries.length > 1;
+    box.style.display = open ? 'block' : 'none';
+    if (!open) return;
+    const top = momTally(), total = top.reduce((a, [, n]) => a + n, 0);
+    document.getElementById('momVoteTallyText').textContent = top.length
+      ? top.slice(0, 3).map(([id, n]) => entryName(id) + ' ' + n + '표').join(' · ') + ' (총 ' + total + '표)' : '아직 투표가 없습니다';
+    const s = window.loadAutoLoginSession && window.loadAutoLoginSession();
+    const mine = s && globalEntries.find(e => e.userId === s.userId);
+    document.getElementById('momVoteBtn').textContent = mine && mine.momVote ? '투표 변경' : '투표하기';
+  }
+  let _momVoter = null;
+  async function openMomVote() {
+    const s = window.loadAutoLoginSession && window.loadAutoLoginSession();
+    let voter = s && globalEntries.find(e => e.userId === s.userId);
+    if (!voter) {
+      const name = await showPrompt('참가자 본인 확인 — 이름을 입력하세요', { title: 'MOM 투표', placeholder: '이름' });
+      if (!name) return;
+      const n = name.trim();
+      const cands = globalEntries.filter(e => e.name === n || cleanPlayerName(e.name, isGuestPlayer(e)) === n);
+      if (!cands.length) return showToast('참가 명단에 없는 이름입니다.', 'error');
+      const pw = await showPrompt('비밀번호 4자리', { title: 'MOM 투표', type: 'password', maxlength: 4 });
+      if (!pw) return;
+      for (const e of cands) {
+        if (String(e.userId).startsWith('GUEST-')) { if (e.guestPw === pw) { voter = e; break; } continue; }
+        const u = globalUsersMap[e.userId];
+        if (u && await verifyUserPw(pw, u, e.userId)) { voter = e; break; }
+      }
+      if (!voter) return showToast('비밀번호가 일치하지 않습니다.', 'error');
+    }
+    _momVoter = voter;
+    document.getElementById('momVoteList').innerHTML = globalEntries.filter(e => e.userId !== voter.userId).map(e =>
+      '<label style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;cursor:pointer;">' +
+      '<input type="radio" name="momPick" value="' + escapeHtml(e.userId) + '"' + (voter.momVote === e.userId ? ' checked' : '') + ' style="accent-color:var(--green);width:16px;height:16px;">' +
+      '<span style="flex:1;font-weight:700;font-size:13.5px;">' + escapeHtml(cleanPlayerName(e.name, isGuestPlayer(e))) + '</span>' +
+      '<span style="font-size:11px;color:var(--muted2);">' + escapeHtml(e.teamLabel || '') + ' · ' + escapeHtml(e.pos || 'MF') + '</span></label>').join('');
+    document.getElementById('momVoteModal').classList.add('show');
+  }
+  function closeMomVote() { document.getElementById('momVoteModal').classList.remove('show'); }
+  async function submitMomVote() {
+    const pick = document.querySelector('input[name="momPick"]:checked');
+    if (!pick) return showToast('선수를 선택하세요.', 'warning');
+    if (!_momVoter || !_momVoter._id) return showToast('투표자 정보를 찾을 수 없습니다.', 'error');
+    try {
+      await db.collection("matches").doc(GAME_ID).collection("entries").doc(_momVoter._id).update({ momVote: pick.value, momVotedAt: new Date().toISOString() });
+      showToast('투표 완료!', 'success'); closeMomVote();
+    } catch (e) { showToast('투표 실패: ' + e.message, 'error'); }
   }
 
   /* 용병 여부 판별: 신규 엔트리 플래그 → 회원정보 → 구버전 GUEST- 아이디 순 */
